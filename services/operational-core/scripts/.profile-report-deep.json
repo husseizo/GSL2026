@@ -1,0 +1,2176 @@
+{
+  "lubricants": {
+    "dbo.CacheCustomers": {
+      "table": "dbo.CacheCustomers",
+      "rowCountExact": 4247,
+      "sampleRows": [
+        {
+          "CardCode": "b00000000",
+          "CardName": "J********a",
+          "IsActive": true,
+          "OdooCustomerId": null,
+          "OdooPartnerId": "",
+          "OdooStatus": "SYNCED",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "2026-06-03T06:30:05.323Z",
+          "OdooSyncDir": "FROM_SAP",
+          "LastSapDeltaAt": "2026-06-01T00:00:00.000Z",
+          "CreditLimit": null,
+          "OutstandingBalance": null,
+          "AvailableCredit": null,
+          "CreditUpdatedAt": null,
+          "PriceList": 1,
+          "SlpCode": -1,
+          "Phone1": "+********5",
+          "Phone2": "",
+          "Email": "",
+          "BillToStreet": "M****e",
+          "BillToCity": "D********m",
+          "BillToCountry": "TZ",
+          "ShipToStreet": "M****e",
+          "ShipToCity": "D********m",
+          "ShipToCountry": "TZ"
+        },
+        {
+          "CardCode": "C00000000",
+          "CardName": "R********a",
+          "IsActive": true,
+          "OdooCustomerId": null,
+          "OdooPartnerId": "",
+          "OdooStatus": "SYNCED",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "2026-05-30T08:50:23.031Z",
+          "OdooSyncDir": "FROM_SAP",
+          "LastSapDeltaAt": "2026-05-28T00:00:00.000Z",
+          "CreditLimit": null,
+          "OutstandingBalance": null,
+          "AvailableCredit": null,
+          "CreditUpdatedAt": null,
+          "PriceList": 1,
+          "SlpCode": -1,
+          "Phone1": "+********0",
+          "Phone2": "",
+          "Email": "",
+          "BillToStreet": "k*******i",
+          "BillToCity": "D********m",
+          "BillToCountry": "TZ",
+          "ShipToStreet": "M********H",
+          "ShipToCity": "D********m",
+          "ShipToCountry": "TZ"
+        },
+        {
+          "CardCode": "C10004",
+          "CardName": "M********y",
+          "IsActive": true,
+          "OdooCustomerId": null,
+          "OdooPartnerId": "",
+          "OdooStatus": "SYNCED",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "2026-06-17T07:06:23.530Z",
+          "OdooSyncDir": "FROM_SAP",
+          "LastSapDeltaAt": "2026-06-15T00:00:00.000Z",
+          "CreditLimit": null,
+          "OutstandingBalance": null,
+          "AvailableCredit": null,
+          "CreditUpdatedAt": null,
+          "PriceList": 1,
+          "SlpCode": -1,
+          "Phone1": "+********0",
+          "Phone2": "",
+          "Email": "",
+          "BillToStreet": "K******o",
+          "BillToCity": "D********m",
+          "BillToCountry": "TZ",
+          "ShipToStreet": "K******o",
+          "ShipToCity": "D********m",
+          "ShipToCountry": "TZ"
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "CardCode": 0,
+        "CardName": 0,
+        "Phone1": 0,
+        "Email": 0,
+        "OdooCustomerId": 100
+      },
+      "distinctKeyExcess": {
+        "CardCode": 0
+      }
+    },
+    "dbo.CacheProducts": {
+      "table": "dbo.CacheProducts",
+      "rowCountExact": 1302,
+      "sampleRows": [
+        {
+          "ItemCode": "1015",
+          "ItemName": "1015-Molygen Motor Protect-500 ml",
+          "OnHandSap": 0,
+          "AvailableCache": 0,
+          "IsActive": true,
+          "PriceList_1": 93220.34,
+          "PriceList_2": 84745.76,
+          "PriceList_3": 65254.24,
+          "OdooProductId": "2040",
+          "OdooPricelistId": null,
+          "OdooStatus": "",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "LastSapSyncAt": "2026-07-12T15:00:26.717Z",
+          "RowVersion": {
+            "type": "Buffer",
+            "data": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              112,
+              143
+            ]
+          },
+          "WarehouseCode": "01",
+          "Barcode": ""
+        },
+        {
+          "ItemCode": "1015",
+          "ItemName": "1015-Molygen Motor Protect-500 ml",
+          "OnHandSap": 6,
+          "AvailableCache": 6,
+          "IsActive": true,
+          "PriceList_1": 93220.34,
+          "PriceList_2": 84745.76,
+          "PriceList_3": 65254.24,
+          "OdooProductId": "2040",
+          "OdooPricelistId": null,
+          "OdooStatus": "",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "LastSapSyncAt": "2026-07-12T15:00:26.717Z",
+          "RowVersion": {
+            "type": "Buffer",
+            "data": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              112,
+              144
+            ]
+          },
+          "WarehouseCode": "COCWHSE",
+          "Barcode": ""
+        },
+        {
+          "ItemCode": "1015",
+          "ItemName": "1015-Molygen Motor Protect-500 ml",
+          "OnHandSap": 0,
+          "AvailableCache": 0,
+          "IsActive": true,
+          "PriceList_1": 93220.34,
+          "PriceList_2": 84745.76,
+          "PriceList_3": 65254.24,
+          "OdooProductId": "2040",
+          "OdooPricelistId": null,
+          "OdooStatus": "",
+          "OdooErrorMsg": null,
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "LastSapSyncAt": "2026-07-12T15:00:26.717Z",
+          "RowVersion": {
+            "type": "Buffer",
+            "data": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              112,
+              145
+            ]
+          },
+          "WarehouseCode": "MainWHSE",
+          "Barcode": ""
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "ItemCode": 0,
+        "WarehouseCode": 0,
+        "OnHandSap": 0,
+        "OdooProductId": 0
+      },
+      "distinctKeyExcess": {
+        "ItemCode": -868,
+        "WarehouseCode": -1299
+      }
+    },
+    "dbo.CacheSalesOrders": {
+      "table": "dbo.CacheSalesOrders",
+      "rowCountExact": 2386,
+      "sampleRows": [
+        {
+          "Id": "1",
+          "SapDocEntry": 1,
+          "SapDocNum": 1,
+          "CustomerCode": "SHP00018",
+          "DocStatus": "C",
+          "OdooSalesOrderId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CreatedAt": "2026-02-14T23:43:47.345Z",
+          "LastUpdatedAt": null,
+          "CancelledAt": null,
+          "CancelReason": null,
+          "CustomerName": null,
+          "DocDate": null,
+          "DocTotal": 0,
+          "UpdateDate": null
+        },
+        {
+          "Id": "2",
+          "SapDocEntry": 2,
+          "SapDocNum": 2,
+          "CustomerCode": "SHP00020",
+          "DocStatus": "C",
+          "OdooSalesOrderId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CreatedAt": "2026-02-14T23:43:47.345Z",
+          "LastUpdatedAt": null,
+          "CancelledAt": null,
+          "CancelReason": null,
+          "CustomerName": null,
+          "DocDate": null,
+          "DocTotal": 0,
+          "UpdateDate": null
+        },
+        {
+          "Id": "3",
+          "SapDocEntry": 3,
+          "SapDocNum": 3,
+          "CustomerCode": "SHP00021",
+          "DocStatus": "C",
+          "OdooSalesOrderId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CreatedAt": "2026-02-14T23:43:47.345Z",
+          "LastUpdatedAt": null,
+          "CancelledAt": null,
+          "CancelReason": null,
+          "CustomerName": null,
+          "DocDate": null,
+          "DocTotal": 0,
+          "UpdateDate": null
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-03-20T00:00:00.000Z",
+          "max": "2026-07-11T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "SapDocEntry": 0,
+        "CustomerCode": 0,
+        "DocStatus": 0,
+        "OdooSalesOrderId": 0
+      },
+      "distinctKeyExcess": {
+        "SapDocEntry": 0
+      }
+    },
+    "dbo.CacheSalesOrderLines": {
+      "table": "dbo.CacheSalesOrderLines",
+      "rowCountExact": 4271,
+      "sampleRows": [
+        {
+          "Id": 1,
+          "SapDocEntry": 1,
+          "ItemCode": "6177",
+          "Quantity": 1,
+          "OdooSalesOrderLineId": null,
+          "LineNum": 0,
+          "ItemName": null,
+          "Price": 0,
+          "LineTotal": 0,
+          "WarehouseCode": null
+        },
+        {
+          "Id": 2,
+          "SapDocEntry": 2,
+          "ItemCode": "20662",
+          "Quantity": 1,
+          "OdooSalesOrderLineId": null,
+          "LineNum": 0,
+          "ItemName": null,
+          "Price": 0,
+          "LineTotal": 0,
+          "WarehouseCode": null
+        },
+        {
+          "Id": 3,
+          "SapDocEntry": 3,
+          "ItemCode": "8863",
+          "Quantity": 1,
+          "OdooSalesOrderLineId": null,
+          "LineNum": 0,
+          "ItemName": null,
+          "Price": 0,
+          "LineTotal": 0,
+          "WarehouseCode": null
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "SapDocEntry": 0,
+        "ItemCode": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "dbo.CacheInvoices": {
+      "table": "dbo.CacheInvoices",
+      "rowCountExact": 12802,
+      "sampleRows": [
+        {
+          "SapDocEntry": 1,
+          "BaseOrderEntry": 0,
+          "SapDocNum": 1,
+          "CardCode": "SHP00018",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "DocTotal": 20000,
+          "VatSum": 3050.85,
+          "OdooInvoiceId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CachedAt": "2026-02-18T18:59:34.556Z",
+          "CardName": null
+        },
+        {
+          "SapDocEntry": 2,
+          "BaseOrderEntry": 0,
+          "SapDocNum": 2,
+          "CardCode": "SHP00020",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "DocTotal": 220000,
+          "VatSum": 33559.32,
+          "OdooInvoiceId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CachedAt": "2026-02-18T18:59:34.570Z",
+          "CardName": null
+        },
+        {
+          "SapDocEntry": 3,
+          "BaseOrderEntry": 0,
+          "SapDocNum": 3,
+          "CardCode": "SHP00021",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "DocTotal": 3100000,
+          "VatSum": 472881.36,
+          "OdooInvoiceId": "",
+          "OdooStatus": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z",
+          "OdooSyncDir": "",
+          "CachedAt": "2026-02-18T18:59:34.574Z",
+          "CardName": null
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-02-04T00:00:00.000Z",
+          "max": "2026-07-12T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "SapDocEntry": 0,
+        "CardCode": 0,
+        "OdooInvoiceId": 0
+      },
+      "distinctKeyExcess": {
+        "SapDocEntry": 0
+      }
+    },
+    "dbo.CacheInvoiceLines": {
+      "table": "dbo.CacheInvoiceLines",
+      "rowCountExact": 22863,
+      "sampleRows": [
+        {
+          "Id": 1,
+          "SapDocEntry": 1,
+          "ItemCode": "6177",
+          "Quantity": 1,
+          "LineTotal": 16949.15,
+          "BaseEntry": 1,
+          "BaseLine": 0,
+          "OdooInvoiceLineId": "",
+          "Description": "\"Silicone Sealing Compound",
+          "GrossBuyPr": 9459,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null
+        },
+        {
+          "Id": 2,
+          "SapDocEntry": 2,
+          "ItemCode": "20662",
+          "Quantity": 1,
+          "LineTotal": 186440.68,
+          "BaseEntry": 2,
+          "BaseLine": 0,
+          "OdooInvoiceLineId": "",
+          "Description": "20662-Top Tec ATF 1800-5 l",
+          "GrossBuyPr": 72405,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null
+        },
+        {
+          "Id": 3,
+          "SapDocEntry": 3,
+          "ItemCode": "8863",
+          "Quantity": 1,
+          "LineTotal": 2627118.64,
+          "BaseEntry": 3,
+          "BaseLine": 0,
+          "OdooInvoiceLineId": "",
+          "Description": "\"8863-Touring High Tech Super SHPDMotor\rOil 15W-40 TBN20-205L\"",
+          "GrossBuyPr": 1809804,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "SapDocEntry": 0,
+        "ItemCode": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "dbo.CacheDeliveries": {
+      "table": "dbo.CacheDeliveries",
+      "rowCountExact": 8957,
+      "sampleRows": [
+        {
+          "SapDocEntry": 1,
+          "SapDocNum": 1,
+          "CardCode": "SHP00018",
+          "DeliveryDate": "2024-02-04T00:00:00.000Z",
+          "BaseOrderEntry": 1,
+          "DeliveredQty": 1,
+          "SapUpdateDate": "2026-02-25T00:00:00.000Z",
+          "IsCancelled": false,
+          "LastSapSyncAt": "2026-03-02T00:22:13.679Z",
+          "OdooDeliveryId": null,
+          "OdooStatus": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "OdooSyncDir": null
+        },
+        {
+          "SapDocEntry": 2,
+          "SapDocNum": 2,
+          "CardCode": "SHP00020",
+          "DeliveryDate": "2024-02-04T00:00:00.000Z",
+          "BaseOrderEntry": 2,
+          "DeliveredQty": 1,
+          "SapUpdateDate": "2026-02-25T00:00:00.000Z",
+          "IsCancelled": false,
+          "LastSapSyncAt": "2026-03-02T00:22:13.679Z",
+          "OdooDeliveryId": null,
+          "OdooStatus": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "OdooSyncDir": null
+        },
+        {
+          "SapDocEntry": 3,
+          "SapDocNum": 3,
+          "CardCode": "SHP00021",
+          "DeliveryDate": "2024-02-04T00:00:00.000Z",
+          "BaseOrderEntry": 3,
+          "DeliveredQty": 1,
+          "SapUpdateDate": "2026-02-25T00:00:00.000Z",
+          "IsCancelled": false,
+          "LastSapSyncAt": "2026-03-02T00:22:13.679Z",
+          "OdooDeliveryId": null,
+          "OdooStatus": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "OdooSyncDir": null
+        }
+      ],
+      "dateColumnRanges": {
+        "DeliveryDate": {
+          "min": "2024-02-04T00:00:00.000Z",
+          "max": "2026-07-11T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "SapDocEntry": 0,
+        "CardCode": 0,
+        "IsCancelled": 0,
+        "OdooDeliveryId": 100
+      },
+      "distinctKeyExcess": {
+        "SapDocEntry": 0
+      }
+    },
+    "dbo.CacheDeliveryLines": {
+      "table": "dbo.CacheDeliveryLines",
+      "rowCountExact": 16054,
+      "sampleRows": [
+        {
+          "Id": 219,
+          "SapDocEntry": 112,
+          "LineNum": 0,
+          "ItemCode": "21492",
+          "Description": "21492-Gasoline Engine System Cleaner-300ML",
+          "Quantity": 1,
+          "LineTotal": 42372.88,
+          "GrossBuyPr": 13575.68,
+          "BaseEntry": 4195,
+          "BaseLine": 0,
+          "OdooMoveId": "",
+          "OdooSalesOrderLineId": "",
+          "OdooStatus": "",
+          "OdooSyncDir": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z"
+        },
+        {
+          "Id": 220,
+          "SapDocEntry": 112,
+          "LineNum": 1,
+          "ItemCode": "8931",
+          "Description": "8931-Catalytic-System Cleaner-300 ml",
+          "Quantity": 1,
+          "LineTotal": 29661.02,
+          "GrossBuyPr": 5456.54,
+          "BaseEntry": 4195,
+          "BaseLine": 1,
+          "OdooMoveId": "",
+          "OdooSalesOrderLineId": "",
+          "OdooStatus": "",
+          "OdooSyncDir": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z"
+        },
+        {
+          "Id": 284,
+          "SapDocEntry": 149,
+          "LineNum": 0,
+          "ItemCode": "1024",
+          "Description": "1024-Fully Synthetic Hypoid Gear Oil (GL4/5) 75W-90-1L",
+          "Quantity": 2,
+          "LineTotal": 135593.22,
+          "GrossBuyPr": 29419,
+          "BaseEntry": 4343,
+          "BaseLine": 0,
+          "OdooMoveId": "",
+          "OdooSalesOrderLineId": "",
+          "OdooStatus": "",
+          "OdooSyncDir": "",
+          "OdooErrorMsg": "",
+          "OdooLastSync": "1899-12-30T00:00:00.000Z"
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "SapDocEntry": 0,
+        "ItemCode": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "dbo.CachePayment": {
+      "table": "dbo.CachePayment",
+      "rowCountExact": 11767,
+      "sampleRows": [
+        {
+          "SapDocEntry": 1,
+          "SapDocNum": 1,
+          "CardCode": "SHP00018",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "TotalPaid": 20000,
+          "CachedAt": "2026-02-14T23:43:04.362Z",
+          "OdooPaymentId": null,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "InvoiceDocEntry": 0,
+          "SumApplied": 0
+        },
+        {
+          "SapDocEntry": 2,
+          "SapDocNum": 2,
+          "CardCode": "SHP00018",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "TotalPaid": 20000,
+          "CachedAt": "2026-02-14T23:43:04.383Z",
+          "OdooPaymentId": null,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "InvoiceDocEntry": 0,
+          "SumApplied": 0
+        },
+        {
+          "SapDocEntry": 3,
+          "SapDocNum": 3,
+          "CardCode": "SHP00020",
+          "DocDate": "2024-02-04T00:00:00.000Z",
+          "TotalPaid": 220000,
+          "CachedAt": "2026-02-14T23:43:04.386Z",
+          "OdooPaymentId": null,
+          "OdooStatus": null,
+          "OdooSyncDir": null,
+          "OdooErrorMsg": null,
+          "OdooLastSync": null,
+          "InvoiceDocEntry": 0,
+          "SumApplied": 0
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-02-04T00:00:00.000Z",
+          "max": "2026-07-10T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "SapDocEntry": 0,
+        "CardCode": 0,
+        "OdooPaymentId": 85.2
+      },
+      "distinctKeyExcess": {
+        "SapDocEntry": 0
+      }
+    },
+    "dbo.CacheLiquiMolyProducts": {
+      "table": "dbo.CacheLiquiMolyProducts",
+      "rowCountExact": 362,
+      "sampleRows": [
+        {
+          "ArticleNumber": "1024",
+          "Name": "Fully Synthetic Hypoid Gear Oil (GL4/5) 75W-90",
+          "Category": "Gear Oils",
+          "SubCategory": null,
+          "Description": "Fully synthetic hypoid gear oil with extremely high performance reserves. Exceeds the highest test requirements of well-known vehicle manufacturers. Ensures assemblies function perfectly, even under extreme operating conditions and when exposed to large temperature fluctuations. Offers high lubrication reliability and optimal wear protection. Has excellent low temperature behavior, reduces transmission noise and enables very long oil change intervals.",
+          "SpecGrade": "75W-90",
+          "PackagingSize": "1 l",
+          "ImageUrl": "https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/2/0/207223b98614949928115dd15d11b226068e6971_1024_Vollsynthetisches_Hypoid_Getriebe_bb8f.png?w=365&h=360&func=bound&sharp=1&org_if_sml=1&force_format=webp,original&force_format=webp%2Coriginal",
+          "ProductUrl": "https://www.liqui-moly.com/en/fully-synthetic-hypoid-gear-oil-gl4-5-75w-90-p004272.html#1024",
+          "IsActive": true,
+          "ScrapedAt": "2026-07-11T23:03:23.504Z",
+          "AllPackagingSizes": "[\"20 l\",\"1 l\"]",
+          "AllImageUrls": "[\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/2/0/207223b98614949928115dd15d11b226068e6971_1024_Vollsynthetisches_Hypoid_Getriebe_bb8f.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/2/0/207223b98614949928115dd15d11b226068e6971_1024_Vollsynthetisches_Hypoid_Getriebe_bb8f.png?w=800\\u0026h=533\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/2/0/20956_Vollsynthetisches_Hypoid_Getriebe__l__GL45__75W_90_20l_b99d.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://pim.liqui-moly.de/ws/media/article-image/1024?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/20956?quality=orig\"]",
+          "Approvals": null,
+          "Specifications": null,
+          "ProductInfoPdfUrl": "https://pim.liqui-moly.de/ws/pi/article/1024?language=en",
+          "SafetyDataSheetPdfUrl": "https://sichdatonline.chemical-check.de/Dokumente/566/10093_0019_03-05-2026_EN.pdf",
+          "Liter": 1,
+          "OverviewProperties": null,
+          "Application": null,
+          "LiquiMolyRecommendations": "[\"BMW 83 22 2 365 987\",\"BMW Synthetic OSP\",\"MB 235.8\",\"MB 235.11\",\"MIL-PRF 2105 E\",\"SAE J 2360\",\"Volvo 97312\",\"ZF TE-ML 02B\",\"ZF TE-ML 05A\",\"ZF TE-ML 12L\",\"ZF TE-ML 12N\",\"ZF TE-ML 16F\",\"ZF TE-ML 17B\",\"ZF TE-ML 19C\",\"ZF TE-ML 21A\"]",
+          "SpecificationItems": "[\"API GL4\",\"API GL5\",\"API MT-1\"]",
+          "PrimaryBarcode": "4100420010248",
+          "PrimaryBarcodeUomCode": "Unit",
+          "PrimaryBarcodeUomName": "Unit",
+          "PrimaryBarcodeUomEntry": 1,
+          "PrimaryBarcodeBaseQtyInGroup": 1,
+          "HasUnitBarcode": true,
+          "BarcodeResolutionStatus": "UNIT_MATCH",
+          "BarcodeResolutionNote": null,
+          "AllBarcodes": "[{\"Code\":\"4100420010248\",\"UomCode\":\"Unit\",\"UomName\":\"Unit\",\"UomEntry\":1,\"BaseQtyInGroup\":1,\"IsPrimary\":true,\"IsUnit\":true},{\"Code\":\"4100420401701\",\"UomCode\":\"6-PU\",\"UomName\":\"6-Packing Units\",\"UomEntry\":3,\"BaseQtyInGroup\":6,\"IsPrimary\":false,\"IsUnit\":false}]",
+          "SapUomInfo": "{\"UomGroupEntry\":1,\"UomGroupName\":\"Packing Units\",\"DefaultCountingUomName\":\"Unit\",\"InventoryUomName\":\"Unit\",\"SalesUomName\":\"Unit\",\"PurchaseUomName\":\"Unit\"}",
+          "EanCode": null
+        },
+        {
+          "ArticleNumber": "1027",
+          "Name": "Hypoid Gear Oil (GL5) SAE 85W-140",
+          "Category": "Gear Oils",
+          "SubCategory": null,
+          "Description": "Mineral-based hypoid gear oil. For vehicles with proven transmission technology. Ensures assemblies function perfectly, even under extreme operating conditions and when exposed to large temperature fluctuations. Maximum lubrication reliability, maximum wear protection due to broad viscosity range. Outstanding viscosity-temperature properties. Reduces transmission noise.",
+          "SpecGrade": "85W-140",
+          "PackagingSize": "20 l",
+          "ImageUrl": "https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/0/3/033eb2ee3c07c0267573cbe587c0769ce37f2ffc_1027_Hypoid_Getriebe__l__GL5__SAE_85W__6d51.png?w=365&h=360&func=bound&sharp=1&org_if_sml=1&force_format=webp,original&force_format=webp%2Coriginal",
+          "ProductUrl": "https://www.liqui-moly.com/en/hypoid-gear-oil-gl5-sae-85w-140-p000217.html#1027",
+          "IsActive": true,
+          "ScrapedAt": "2026-07-11T23:03:23.504Z",
+          "AllPackagingSizes": "[\"205 l\",\"60 l\",\"20 l\"]",
+          "AllImageUrls": "[\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/0/3/033eb2ee3c07c0267573cbe587c0769ce37f2ffc_1027_Hypoid_Getriebe__l__GL5__SAE_85W__6d51.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/0/3/033eb2ee3c07c0267573cbe587c0769ce37f2ffc_1027_Hypoid_Getriebe__l__GL5__SAE_85W__6d51.png?w=800\\u0026h=533\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/0/3/0349c27f3c69be7bded1e71e6c0014b4e17a4015_3595_Hypoid_Getriebe__l__GL5__SAE_85W__a1f5.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/3/9/393877588a3c2ac5ab95f1047173f2623dad50a6_1028_Hypoid_Getriebe__l__GL5__SAE_85W__a170.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://pim.liqui-moly.de/ws/media/article-image/1027?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/1028?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/3595?quality=orig\"]",
+          "Approvals": "[\"MIL-L 2105 D\",\"ZF TE-ML 16D\",\"ZF TE-ML 21A\",\"ZF approval number ZF005974\"]",
+          "Specifications": null,
+          "ProductInfoPdfUrl": "https://pim.liqui-moly.de/ws/pi/article/1027?language=en",
+          "SafetyDataSheetPdfUrl": "https://sichdatonline.chemical-check.de/Dokumente/566/10037_0027_04-05-2026_EN.pdf",
+          "Liter": 20,
+          "OverviewProperties": "[\"reduces running noise\",\"high pressure-absorption capability\",\"minimizes wear\",\"does not attack common sealing materials\",\"excellent resistance to aging\",\"excellent low temperature behavior\",\"high viscosity\"]",
+          "Application": null,
+          "LiquiMolyRecommendations": "[\"MIL-L 2105 C\"]",
+          "SpecificationItems": "[\"API GL5\"]",
+          "PrimaryBarcode": "4100420010279",
+          "PrimaryBarcodeUomCode": "Unit",
+          "PrimaryBarcodeUomName": "Unit",
+          "PrimaryBarcodeUomEntry": 1,
+          "PrimaryBarcodeBaseQtyInGroup": 1,
+          "HasUnitBarcode": true,
+          "BarcodeResolutionStatus": "UNIT_MATCH",
+          "BarcodeResolutionNote": null,
+          "AllBarcodes": "[{\"Code\":\"4100420010279\",\"UomCode\":\"Unit\",\"UomName\":\"Unit\",\"UomEntry\":1,\"BaseQtyInGroup\":1,\"IsPrimary\":true,\"IsUnit\":true}]",
+          "SapUomInfo": "{\"UomGroupEntry\":1,\"UomGroupName\":\"Packing Units\",\"DefaultCountingUomName\":\"Unit\",\"InventoryUomName\":\"Unit\",\"SalesUomName\":\"Unit\",\"PurchaseUomName\":\"Unit\"}",
+          "EanCode": null
+        },
+        {
+          "ArticleNumber": "1035",
+          "Name": "Hypoid Gear Oil (GL5) SAE 85W-90",
+          "Category": "Gear Oils",
+          "SubCategory": null,
+          "Description": "Mineral-based hypoid gear oil. For vehicles with proven transmission technology. Ensures assemblies function perfectly, even under extreme operating conditions and when exposed to large temperature fluctuations. Ensures a stable lubricating film. Offers high lubrication reliability and optimal wear protection.",
+          "SpecGrade": "85W-90",
+          "PackagingSize": "1 l",
+          "ImageUrl": "https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/4/d/4d5ec8d91cde93353ce6c114f01522408529728a_1035_Hypoid_Getriebe__l__GL5__SAE_85W__6027.png?w=365&h=360&func=bound&sharp=1&org_if_sml=1&force_format=webp,original&force_format=webp%2Coriginal",
+          "ProductUrl": "https://www.liqui-moly.com/en/hypoid-gear-oil-gl5-sae-85w-90-p000216.html#1035",
+          "IsActive": true,
+          "ScrapedAt": "2026-07-11T23:03:23.504Z",
+          "AllPackagingSizes": "[\"205 l\",\"60 l\",\"20 l\",\"1 l\",\"500 ml\"]",
+          "AllImageUrls": "[\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/4/d/4d5ec8d91cde93353ce6c114f01522408529728a_1035_Hypoid_Getriebe__l__GL5__SAE_85W__6027.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/4/d/4d5ec8d91cde93353ce6c114f01522408529728a_1035_Hypoid_Getriebe__l__GL5__SAE_85W__6027.png?w=800\\u0026h=533\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/1/0/1047_Hypoid_Getriebe__l__GL5__SAE_85W_90_20l_c4b3.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/1/e/1e0f957f282ea8b39b91e270f4044af7a0941df9_2165_Hypoid_Getriebe__l__GL5__SAE_85W__49bf.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/5/d/5d8cf791377380645a5155009547fb7b4360e041_1404_Hypoid_Getriebe__l_GL5_SAE_85W_90_0243.jpg?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/9/a/9a524722ed7e1e7247d616f5bdd7ee7e0ebb909a_8968_Hypoid_Getriebe__l__GL5__SAE_85W__7391.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/9/c/9cf391704092e01779ef973dee222e96e1227dbd_20465_Hypoid_Getriebe__l__GL5__SAE_85W_6b18.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://www.liqui-moly.com/media/catalog/product/cache/7c4066dd86a6b9217681a7aaaa67e822/b/0/b048cf63e07caf5e52f4d59abca64edb407c36cd_1031_Hypoid_Getriebe__l__GL5__SAE_85W__33e7.png?w=365\\u0026h=360\\u0026func=bound\\u0026sharp=1\\u0026org_if_sml=1\\u0026force_format=webp,original\\u0026force_format=webp%2Coriginal\",\"https://pim.liqui-moly.de/ws/media/article-image/1031?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/1035?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/1047?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/1404?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/20465?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/2165?quality=orig\",\"https://pim.liqui-moly.de/ws/media/article-image/8968?quality=orig\"]",
+          "Approvals": "[\"DTFR 12B100\",\"MB-Approval 235.0H\",\"MIL-L 2105 D\",\"ZF TE-ML 16C\",\"ZF TE-ML 17B\",\"ZF TE-ML 19B\",\"ZF TE-ML 21A\",\"ZF approval number ZF000695\"]",
+          "Specifications": null,
+          "ProductInfoPdfUrl": "https://pim.liqui-moly.de/ws/pi/article/1404?language=en",
+          "SafetyDataSheetPdfUrl": "https://sichdatonline.chemical-check.de/Dokumente/566/10038_0024_04-05-2026_EN.pdf",
+          "Liter": 1,
+          "OverviewProperties": "[\"reduces running noise\",\"high pressure-absorption capability\",\"minimizes wear\",\"does not attack common sealing materials\",\"excellent viscosity/temperature properties\",\"excellent resistance to aging\"]",
+          "Application": null,
+          "LiquiMolyRecommendations": "[\"MAN 342 Typ M1\"]",
+          "SpecificationItems": "[\"API GL5\"]",
+          "PrimaryBarcode": "4100420010354",
+          "PrimaryBarcodeUomCode": "Unit",
+          "PrimaryBarcodeUomName": "Unit",
+          "PrimaryBarcodeUomEntry": 1,
+          "PrimaryBarcodeBaseQtyInGroup": 1,
+          "HasUnitBarcode": true,
+          "BarcodeResolutionStatus": "UNIT_MATCH",
+          "BarcodeResolutionNote": null,
+          "AllBarcodes": "[{\"Code\":\"4100420010354\",\"UomCode\":\"Unit\",\"UomName\":\"Unit\",\"UomEntry\":1,\"BaseQtyInGroup\":1,\"IsPrimary\":true,\"IsUnit\":true},{\"Code\":\"4100420401749\",\"UomCode\":\"6-PU\",\"UomName\":\"6-Packing Units\",\"UomEntry\":3,\"BaseQtyInGroup\":6,\"IsPrimary\":false,\"IsUnit\":false}]",
+          "SapUomInfo": "{\"UomGroupEntry\":1,\"UomGroupName\":\"Packing Units\",\"DefaultCountingUomName\":\"Unit\",\"InventoryUomName\":\"Unit\",\"SalesUomName\":\"Unit\",\"PurchaseUomName\":\"Unit\"}",
+          "EanCode": null
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "ArticleNumber": 0,
+        "Name": 0,
+        "SpecGrade": 66.85
+      },
+      "distinctKeyExcess": {
+        "ArticleNumber": 0
+      }
+    }
+  },
+  "partsCatalog": {
+    "public.oitm": {
+      "table": "public.oitm",
+      "rowCountExact": 9154,
+      "sampleRows": [
+        {
+          "id": 4178,
+          "tecdoc_article_id": 4626379,
+          "article_number": "7PK1635",
+          "name": "V-Ribbed Belt",
+          "supplier_name": "TOP DRIVE",
+          "supplier_id": 6436,
+          "canonical_oem_number": "11281432724",
+          "ean_barcode": "4010858504465",
+          "weight_kg": "0.194",
+          "specs_json": "[{\"criteriaName\": \"Length [mm]\", \"criteriaValue\": \"1635\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Weight [kg]\", \"criteriaValue\": \"0,194\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Number of ribs\", \"criteriaValue\": \"7\", \"criteriaType\": \"categorical\"}]",
+          "spec_count": 3,
+          "last_enriched_date": "2026-03-20T14:29:46.106Z",
+          "create_date": "2026-03-17T15:13:56.555Z",
+          "write_date": "2026-03-22T14:29:37.134Z",
+          "source": "file_upload",
+          "batch_id": null,
+          "lookup_status": "found",
+          "compatible_vehicles_count": 19,
+          "categories_count": 3,
+          "item_code": "BM10506",
+          "stock_on_hand": "4",
+          "group_id_17vin": null,
+          "epc_id_17vin": null,
+          "current_oem_17vin": null,
+          "oem_lookup_status": "pending",
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/PDF/31/029a865946a85008770515dcf970a876aa85a753.pdf",
+          "match_candidates": null,
+          "article_criteria": {
+            "source": "direct_tecdoc",
+            "status": "enriched",
+            "criteriaCount": 8
+          },
+          "febi_article_id": 4626379,
+          "febi_article_no": "7PK1635",
+          "enrichment_confidence": 90,
+          "primary_category_id": null,
+          "cleanup_status": "extracted",
+          "is_kit": false,
+          "kit_component_count": null,
+          "metadata_corrections": null,
+          "pass_3_verified_at": null,
+          "pass_3_enriched_at": null,
+          "pass_3_verification_status": null,
+          "pass_3_id_corrected": false,
+          "pass_3_verification_coverage": null,
+          "product_slug": null,
+          "seo_meta_description": null,
+          "search_vector": null,
+          "pass_4_processed_at": null,
+          "pass_4_codes_found": 0,
+          "pass_4_candidates_tried": 0,
+          "pass_4_new_specs_added": 0,
+          "sell_price_tzs": "70000.00",
+          "price_last_updated": "2026-05-26T14:32:09.535Z",
+          "part_group": "Engine",
+          "part_component": "V-Ribbed Belt",
+          "part_group_confidence": "high",
+          "original_supplier_name": "TOP DRIVE",
+          "original_brand_normalized": "TOP DRIVE",
+          "supplier_truth_updated_at": "2026-05-28T15:34:52.497Z",
+          "not_sellable_reason": null,
+          "related_parts": null
+        },
+        {
+          "id": 5307,
+          "tecdoc_article_id": 2357198,
+          "article_number": "27110-002R",
+          "name": "Shock Absorber",
+          "supplier_name": "FEBEST",
+          "supplier_id": 4674,
+          "canonical_oem_number": "30639513",
+          "ean_barcode": "4056111161402",
+          "weight_kg": "1",
+          "specs_json": "[{\"criteriaName\": \"Fitting Position\", \"criteriaValue\": \"Rear Axle\", \"criteriaType\": \"categorical\"}, {\"criteriaName\": \"Weight [kg]\", \"criteriaValue\": \"1,67\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Packaging length [cm]\", \"criteriaValue\": \"43,5\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Packaging width [cm]\", \"criteriaValue\": \"7,5\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Packaging height [cm]\", \"criteriaValue\": \"5,5\", \"criteriaType\": \"measurement\"}]",
+          "spec_count": 5,
+          "last_enriched_date": "2026-03-20T14:34:05.115Z",
+          "create_date": "2026-03-17T15:14:39.775Z",
+          "write_date": "2026-03-22T14:29:51.225Z",
+          "source": "file_upload",
+          "batch_id": null,
+          "lookup_status": "found",
+          "compatible_vehicles_count": 21,
+          "categories_count": 3,
+          "item_code": "VOL10031",
+          "stock_on_hand": "6",
+          "group_id_17vin": null,
+          "epc_id_17vin": null,
+          "current_oem_17vin": null,
+          "oem_lookup_status": "pending",
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/images/4674/140ff845a29a8e7e715004dbb7634f7859d5853a.webp",
+          "match_candidates": null,
+          "article_criteria": {
+            "source": "direct_tecdoc",
+            "status": "enriched",
+            "criteriaCount": 10
+          },
+          "febi_article_id": 2357198,
+          "febi_article_no": "27110-002R",
+          "enrichment_confidence": 75,
+          "primary_category_id": null,
+          "cleanup_status": "extracted",
+          "is_kit": false,
+          "kit_component_count": null,
+          "metadata_corrections": null,
+          "pass_3_verified_at": null,
+          "pass_3_enriched_at": null,
+          "pass_3_verification_status": null,
+          "pass_3_id_corrected": false,
+          "pass_3_verification_coverage": null,
+          "product_slug": null,
+          "seo_meta_description": null,
+          "search_vector": null,
+          "pass_4_processed_at": null,
+          "pass_4_codes_found": 0,
+          "pass_4_candidates_tried": 0,
+          "pass_4_new_specs_added": 0,
+          "sell_price_tzs": "300000.00",
+          "price_last_updated": "2026-05-26T14:32:09.535Z",
+          "part_group": "Suspension & Axle",
+          "part_component": "Shock Absorber",
+          "part_group_confidence": "high",
+          "original_supplier_name": "FEBEST",
+          "original_brand_normalized": "FEBEST",
+          "supplier_truth_updated_at": "2026-05-28T15:34:52.497Z",
+          "not_sellable_reason": null,
+          "related_parts": null
+        },
+        {
+          "id": 7768,
+          "tecdoc_article_id": 3850621,
+          "article_number": "55979",
+          "name": "Fuel Pump",
+          "supplier_name": "OSSCA",
+          "supplier_id": 4683,
+          "canonical_oem_number": "312848",
+          "ean_barcode": "4019064434658",
+          "weight_kg": "2",
+          "specs_json": "[{\"criteriaName\": \"Fitting Position\", \"criteriaValue\": \"Front Axle\", \"criteriaType\": \"categorical\"}, {\"criteriaName\": \"Length [mm]\", \"criteriaValue\": \"322\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Weight [kg]\", \"criteriaValue\": \"2,20\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Spring Design\", \"criteriaValue\": \"24\", \"criteriaType\": \"categorical\"}, {\"criteriaName\": \"Outer Diameter [mm]\", \"criteriaValue\": \"144\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"Wire Diameter [mm]\", \"criteriaValue\": \"12,8\", \"criteriaType\": \"measurement\"}, {\"criteriaName\": \"replacement in pairs recommended\", \"criteriaValue\": \"\", \"criteriaType\": \"note\"}]",
+          "spec_count": 7,
+          "last_enriched_date": "2026-03-19T20:12:32.198Z",
+          "create_date": "2026-03-19T20:02:01.402Z",
+          "write_date": "2026-03-22T14:26:29.795Z",
+          "source": "non_tecdoc",
+          "batch_id": "nontecdoc_1773961303257",
+          "lookup_status": "oem_matched",
+          "compatible_vehicles_count": 27,
+          "categories_count": 1,
+          "item_code": "MB100599",
+          "stock_on_hand": "1",
+          "group_id_17vin": null,
+          "epc_id_17vin": null,
+          "current_oem_17vin": null,
+          "oem_lookup_status": "pending",
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/images/1/074eacba2780f102cd55f12747c2c2911ede5b2f.webp",
+          "match_candidates": null,
+          "article_criteria": {
+            "source": "direct_tecdoc",
+            "status": "enriched",
+            "criteriaCount": 11
+          },
+          "febi_article_id": 3850617,
+          "febi_article_no": "MB100599",
+          "enrichment_confidence": 58,
+          "primary_category_id": null,
+          "cleanup_status": "extracted",
+          "is_kit": false,
+          "kit_component_count": null,
+          "metadata_corrections": null,
+          "pass_3_verified_at": "2026-05-25T15:37:10.910Z",
+          "pass_3_enriched_at": "2026-05-25T15:37:10.910Z",
+          "pass_3_verification_status": "rediscovered",
+          "pass_3_id_corrected": true,
+          "pass_3_verification_coverage": "1.000",
+          "product_slug": null,
+          "seo_meta_description": null,
+          "search_vector": null,
+          "pass_4_processed_at": "2026-05-26T02:58:42.140Z",
+          "pass_4_codes_found": 0,
+          "pass_4_candidates_tried": 1,
+          "pass_4_new_specs_added": 0,
+          "sell_price_tzs": "650000.00",
+          "price_last_updated": "2026-05-26T14:32:09.535Z",
+          "part_group": "Fuel System",
+          "part_component": "Fuel Pump",
+          "part_group_confidence": "high",
+          "original_supplier_name": "BMTSR",
+          "original_brand_normalized": "BMTSR",
+          "supplier_truth_updated_at": "2026-05-28T15:34:52.497Z",
+          "not_sellable_reason": null,
+          "related_parts": null
+        }
+      ],
+      "dateColumnRanges": {
+        "create_date": {
+          "min": "2026-03-11T21:35:32.282Z",
+          "max": "2026-06-24T15:29:31.994Z"
+        },
+        "write_date": {
+          "min": "2026-03-20T14:06:23.581Z",
+          "max": "2026-06-24T15:29:31.994Z"
+        }
+      },
+      "nullRates": {
+        "item_code": 3.45,
+        "article_number": 0,
+        "canonical_oem_number": 3.41,
+        "lookup_status": 0
+      },
+      "distinctKeyExcess": {
+        "item_code": -316
+      }
+    },
+    "public.oitm_cross_reference": {
+      "table": "public.oitm_cross_reference",
+      "rowCountExact": 3704665,
+      "sampleRows": [
+        {
+          "id": 4743747,
+          "oitm_id": 2121,
+          "oem_number": "DP1010100915A",
+          "oem_number_normalized": "DP1010100915A",
+          "manufacturer_name": "Dr!ve+",
+          "manufacturer_id": null,
+          "source": "bulk_v2_resume",
+          "created_at": "2026-05-30T16:48:34.026Z",
+          "reference_type": "iam_equivalent"
+        },
+        {
+          "id": 4743748,
+          "oitm_id": 2121,
+          "oem_number": "DP1010101248",
+          "oem_number_normalized": "DP1010101248",
+          "manufacturer_name": "Dr!ve+",
+          "manufacturer_id": null,
+          "source": "bulk_v2_resume",
+          "created_at": "2026-05-30T16:48:34.026Z",
+          "reference_type": "iam_equivalent"
+        },
+        {
+          "id": 4743749,
+          "oitm_id": 2121,
+          "oem_number": "FK20035",
+          "oem_number_normalized": "FK20035",
+          "manufacturer_name": "KAISHIN",
+          "manufacturer_id": null,
+          "source": "bulk_v2_resume",
+          "created_at": "2026-05-30T16:48:34.026Z",
+          "reference_type": "iam_equivalent"
+        }
+      ],
+      "dateColumnRanges": {
+        "created_at": {
+          "min": "2026-03-20T16:24:35.527Z",
+          "max": "2026-07-01T12:22:16.097Z"
+        }
+      },
+      "nullRates": {
+        "oitm_id": 0,
+        "oem_number": 0,
+        "oem_number_normalized": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "public.oitm_compatible_vehicle": {
+      "table": "public.oitm_compatible_vehicle",
+      "rowCountExact": 1363240,
+      "sampleRows": [
+        {
+          "id": 1,
+          "oitm_id": 4,
+          "vehicle_id": 100542,
+          "model_id": 8034,
+          "fitment_source": "api"
+        },
+        {
+          "id": 2,
+          "oitm_id": 4,
+          "vehicle_id": 100551,
+          "model_id": 11851,
+          "fitment_source": "api"
+        },
+        {
+          "id": 3,
+          "oitm_id": 4,
+          "vehicle_id": 100750,
+          "model_id": 11851,
+          "fitment_source": "api"
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "oitm_id": 0,
+        "vehicle_id": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "public.neon_germax_products": {
+      "table": "public.neon_germax_products",
+      "rowCountExact": 1075,
+      "sampleRows": [
+        {
+          "item_code": "LR100125",
+          "item_name": "40887/RBK500040/RBK500230/RBK500280",
+          "item_group_name": "Land Rover",
+          "engine_code": "",
+          "germax_article_number": "GL0192",
+          "oem_part_number": "RBK500300 RBK500280 RBK500180 RBK500230 RBK500240 RBK500040",
+          "fit_for_auto": "Land Rover Discovery 3 Discovery 4 Range Rover Sport 2005 – 2009 2010 – 2013",
+          "description": null,
+          "image_url": "https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-7-600x600.jpg",
+          "all_image_urls": "[\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-7-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-6-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-5-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-4-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-2-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-3-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2020/11/GL0192-Control-Arm-Ball-Joint-Land-Rover-Discovery-3-Discovery-4-Range-Rover-Sports-2005-2009-2010-2013-RBK500300-RBK500280-RBK500180-RBK500230-RBK500240-RBK500040-600x600.jpg\"]",
+          "product_url": "https://germaxparts.com/land-rover-part/gl0192-control-arm-ball-joint-land-rover-discovery-3-discovery-4-range-rover-sport-2005-2009-2010-2013-rbk500300-rbk500280-rbk500180-rbk500230-rbk500240-rbk500040/",
+          "match_method": "item_name_only",
+          "match_score": "140.00",
+          "scraped_at": "2026-03-29T11:44:54.656Z",
+          "last_sap_seed_at": "2026-07-11T21:00:40.056Z",
+          "is_active": true,
+          "scrape_status": "SCRAPED",
+          "scrape_error": null
+        },
+        {
+          "item_code": "LR100137",
+          "item_name": "PHE000112/5H2Z9601AA",
+          "item_group_name": "Land Rover",
+          "engine_code": "",
+          "germax_article_number": "GL0572",
+          "oem_part_number": "PHE000112 5H2Z9601AA C31196 ELP9168 LX1764 CA9993",
+          "fit_for_auto": "Land Rover Discovery 3 2005 2006 2007 2008 2009 Discovery 4 Range Rover Sport 2006 2007 2008 2009",
+          "description": null,
+          "image_url": "https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-4-600x600.jpg",
+          "all_image_urls": "[\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-4-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-6-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-5-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-3-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-2-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-1-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2021/01/GL0572-Air-Filter-Land-Rover-Discovery-3-2005-2009-Discovery-4-Range-Rover-Sports-2006-2009-PHE000112-5H2Z9601AA-C31196-ELP9168-LX1764-CA9993-70319368-7-600x600.jpg\"]",
+          "product_url": "https://germaxparts.com/land-rover-part/gl0572-air-filter-land-rover-discovery-3-2005-2009-discovery-4-range-rover-sport-2006-2009-phe000112-5h2z9601aa-c31196-elp9168-lx1764-ca9993-70319368/",
+          "match_method": "item_name_only",
+          "match_score": "60.00",
+          "scraped_at": "2026-03-29T11:47:01.951Z",
+          "last_sap_seed_at": "2026-07-11T21:00:40.056Z",
+          "is_active": true,
+          "scrape_status": "SCRAPED",
+          "scrape_error": null
+        },
+        {
+          "item_code": "LR100182",
+          "item_name": "LR033528/GL01711",
+          "item_group_name": "Land Rover",
+          "engine_code": "GL0171-1",
+          "germax_article_number": "GL0171-1",
+          "oem_part_number": "LR033528 LR033529-1 LR045193-1",
+          "fit_for_auto": "Land Rover Range Rover Vogue 2013-2017 Range Rover Sport 2014-2017",
+          "description": null,
+          "image_url": "https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-1-600x600.jpg",
+          "all_image_urls": "[\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-1-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-6-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-5-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-4-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-3-600x600.jpg\",\"https://germaxparts.com/wp-content/uploads/2022/09/GL0171-1-Tie-Rod-Rack-End-Dust-Cover-LR033528-LR033529-1-LR045193-1-Land-Rover-Range-Rover-Vogue-2013-2017-Range-Rover-Sport-2014-2017-2-600x600.jpg\"]",
+          "product_url": "https://germaxparts.com/land-rover-part/tie-rod-rack-end-dust-cover-lr033528-lr033529-1-lr045193-1-gl0171-1/",
+          "match_method": "item_name_engine_code",
+          "match_score": "140.00",
+          "scraped_at": "2026-03-29T11:53:40.772Z",
+          "last_sap_seed_at": "2026-07-11T21:00:40.056Z",
+          "is_active": true,
+          "scrape_status": "SCRAPED",
+          "scrape_error": null
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {},
+      "distinctKeyExcess": {}
+    },
+    "public.\"NeonAutoHubProducts\"": {
+      "table": "public.\"NeonAutoHubProducts\"",
+      "rowCountExact": 9933,
+      "sampleRows": [
+        {
+          "ItemCode": "BM10026",
+          "ItemName": "11127796378/11127796378",
+          "OnHandSap": "3.00",
+          "AvailableCache": "3.00",
+          "IsActive": true,
+          "SyncedAt": "2026-07-12T15:50:39.253Z",
+          "U_MdlTEST": "MAYER",
+          "U_Item_Name": "TOP COVER GASKET",
+          "U_Article_No": "",
+          "U_ReferenceNum": "",
+          "U_OriginalNumber": "",
+          "U_PT_No_Inproduction": "11127796378"
+        },
+        {
+          "ItemCode": "BM10081",
+          "ItemName": "11531437040/11531437040",
+          "OnHandSap": "0.00",
+          "AvailableCache": "0.00",
+          "IsActive": false,
+          "SyncedAt": "2026-07-12T15:50:39.253Z",
+          "U_MdlTEST": "MAHLE",
+          "U_Item_Name": "THERMOSTAT",
+          "U_Article_No": "",
+          "U_ReferenceNum": "",
+          "U_OriginalNumber": "",
+          "U_PT_No_Inproduction": "11531437040"
+        },
+        {
+          "ItemCode": "BM10474",
+          "ItemName": "51357140589",
+          "OnHandSap": "0.00",
+          "AvailableCache": "0.00",
+          "IsActive": false,
+          "SyncedAt": "2026-07-12T15:50:39.253Z",
+          "U_MdlTEST": "AUTOSTAR",
+          "U_Item_Name": "WINDOW LIFTER",
+          "U_Article_No": "",
+          "U_ReferenceNum": "",
+          "U_OriginalNumber": "",
+          "U_PT_No_Inproduction": "51357140589"
+        }
+      ],
+      "dateColumnRanges": {
+        "SyncedAt": {
+          "min": "2026-07-12T15:50:39.253Z",
+          "max": "2026-07-12T15:50:39.253Z"
+        }
+      },
+      "nullRates": {
+        "ItemCode": 0,
+        "OnHandSap": 0
+      },
+      "distinctKeyExcess": {
+        "ItemCode": 0
+      }
+    },
+    "public.\"NeonAutoHubSalesOrders\"": {
+      "table": "public.\"NeonAutoHubSalesOrders\"",
+      "rowCountExact": 15785,
+      "sampleRows": [
+        {
+          "DocEntry": 10954,
+          "DocNum": 10954,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2024-06-03T00:00:00.000Z",
+          "DocDueDate": "2024-06-03T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "1000000.00",
+          "Comments": "",
+          "UpdatedInSap": "2024-09-25T19:34:32.000Z",
+          "SyncedAt": "2026-07-01T10:18:09.780Z"
+        },
+        {
+          "DocEntry": 11322,
+          "DocNum": 11322,
+          "CardCode": "CUS000203",
+          "CardName": "K********A",
+          "DocDate": "2024-06-20T00:00:00.000Z",
+          "DocDueDate": "2024-06-20T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "220000.00",
+          "Comments": "",
+          "UpdatedInSap": "2024-07-13T16:24:03.000Z",
+          "SyncedAt": "2026-07-01T10:18:09.780Z"
+        },
+        {
+          "DocEntry": 11342,
+          "DocNum": 11342,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2024-06-21T00:00:00.000Z",
+          "DocDueDate": "2024-06-21T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "75000.00",
+          "Comments": "",
+          "UpdatedInSap": "2024-07-02T15:01:56.000Z",
+          "SyncedAt": "2026-07-01T10:18:09.780Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-06-03T00:00:00.000Z",
+          "max": "2026-07-12T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "DocEntry": 0,
+        "CardCode": 0,
+        "DocStatus": 0
+      },
+      "distinctKeyExcess": {
+        "DocEntry": 0
+      }
+    },
+    "public.\"NeonAutoHubSalesOrderLines\"": {
+      "table": "public.\"NeonAutoHubSalesOrderLines\"",
+      "rowCountExact": 26622,
+      "sampleRows": [
+        {
+          "Id": "1",
+          "DocEntry": 10954,
+          "LineNum": 0,
+          "ItemCode": "VAG13066",
+          "Description": "06K107065AR/06K107065F/06K107065T/06L107065G/11071702501",
+          "Quantity": "1.0000",
+          "OpenQty": "0.0000",
+          "Price": "1000000.00",
+          "LineTotal": "1000000.00",
+          "WhsCode": "003"
+        },
+        {
+          "Id": "2",
+          "DocEntry": 11322,
+          "LineNum": 2,
+          "ItemCode": "MB100153",
+          "Description": "A2033331014",
+          "Quantity": "2.0000",
+          "OpenQty": "0.0000",
+          "Price": "60000.00",
+          "LineTotal": "120000.00",
+          "WhsCode": "001"
+        },
+        {
+          "Id": "3",
+          "DocEntry": 11322,
+          "LineNum": 3,
+          "ItemCode": "MB100154",
+          "Description": "A2033330914",
+          "Quantity": "2.0000",
+          "OpenQty": "0.0000",
+          "Price": "50000.00",
+          "LineTotal": "100000.00",
+          "WhsCode": "001"
+        }
+      ],
+      "dateColumnRanges": {},
+      "nullRates": {
+        "DocEntry": 0,
+        "ItemCode": 0
+      },
+      "distinctKeyExcess": {}
+    },
+    "public.\"NeonAutoHubInvoices\"": {
+      "table": "public.\"NeonAutoHubInvoices\"",
+      "rowCountExact": 14391,
+      "sampleRows": [
+        {
+          "DocEntry": 8358,
+          "DocNum": 18350,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2023-11-08T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "230000.00",
+          "VatSum": "0**0",
+          "PaidToDate": "230000.00",
+          "Comments": "Based On Sales Orders 6602. Based On Deliveries 7622.",
+          "UpdatedInSap": "2024-07-13T23:29:58.000Z",
+          "SyncedAt": "2026-07-01T10:19:37.221Z"
+        },
+        {
+          "DocEntry": 9081,
+          "DocNum": 19073,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2023-12-19T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "380000.00",
+          "VatSum": "0**0",
+          "PaidToDate": "380000.00",
+          "Comments": "Based On Sales Orders 7322. Based On Deliveries 8421.",
+          "UpdatedInSap": "2025-02-27T20:24:25.000Z",
+          "SyncedAt": "2026-07-01T10:19:37.221Z"
+        },
+        {
+          "DocEntry": 9527,
+          "DocNum": 19519,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2024-01-13T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "130000.00",
+          "VatSum": "0**0",
+          "PaidToDate": "130000.00",
+          "Comments": "Based On Sales Orders 7817. Based On Deliveries 8987.",
+          "UpdatedInSap": "2024-07-13T22:28:11.000Z",
+          "SyncedAt": "2026-07-01T10:19:37.221Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2023-11-08T00:00:00.000Z",
+          "max": "2026-07-10T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "DocEntry": 0,
+        "CardCode": 0,
+        "DocStatus": 0
+      },
+      "distinctKeyExcess": {
+        "DocEntry": 0
+      }
+    },
+    "public.\"NeonAutoHubDeliveries\"": {
+      "table": "public.\"NeonAutoHubDeliveries\"",
+      "rowCountExact": 16419,
+      "sampleRows": [
+        {
+          "DocEntry": 13150,
+          "DocNum": 13150,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2024-06-30T00:00:00.000Z",
+          "DocStatus": "C",
+          "IsCancelled": false,
+          "Comments": "Based On Sales Orders 11528.",
+          "UpdatedInSap": "2024-06-30T12:01:28.000Z",
+          "SyncedAt": "2026-07-01T10:16:31.982Z"
+        },
+        {
+          "DocEntry": 13151,
+          "DocNum": 13151,
+          "CardCode": "0001",
+          "CardName": "C**H",
+          "DocDate": "2024-06-30T00:00:00.000Z",
+          "DocStatus": "C",
+          "IsCancelled": true,
+          "Comments": "Based On Sales Orders 11532.",
+          "UpdatedInSap": "2024-06-30T13:55:47.000Z",
+          "SyncedAt": "2026-07-01T10:16:31.982Z"
+        },
+        {
+          "DocEntry": 13152,
+          "DocNum": 13152,
+          "CardCode": "CUS000247",
+          "CardName": "O********A",
+          "DocDate": "2024-06-30T00:00:00.000Z",
+          "DocStatus": "C",
+          "IsCancelled": true,
+          "Comments": "Based On Sales Orders 11531.",
+          "UpdatedInSap": "2024-06-30T13:58:07.000Z",
+          "SyncedAt": "2026-07-01T10:16:31.982Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-06-30T00:00:00.000Z",
+          "max": "2026-07-11T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "DocEntry": 0,
+        "CardCode": 0,
+        "IsCancelled": 0
+      },
+      "distinctKeyExcess": {
+        "DocEntry": 0
+      }
+    },
+    "public.\"NeonAutoHubPurchaseOrders\"": {
+      "table": "public.\"NeonAutoHubPurchaseOrders\"",
+      "rowCountExact": 195,
+      "sampleRows": [
+        {
+          "DocEntry": 5,
+          "DocNum": 5,
+          "CardCode": "VEN006",
+          "CardName": "V**A",
+          "DocDate": "2024-08-05T00:00:00.000Z",
+          "DocDueDate": "2024-08-05T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "10741911.85",
+          "Comments": "VIKA PALLET NO 1",
+          "UpdatedInSap": "2024-08-05T19:12:43.000Z",
+          "SyncedAt": "2026-07-01T12:16:07.332Z"
+        },
+        {
+          "DocEntry": 6,
+          "DocNum": 6,
+          "CardCode": "VEN006",
+          "CardName": "V**A",
+          "DocDate": "2024-08-08T00:00:00.000Z",
+          "DocDueDate": "2024-08-08T00:00:00.000Z",
+          "DocStatus": "C",
+          "DocTotal": "6641895.68",
+          "Comments": "Pallet Number 2",
+          "UpdatedInSap": "2024-08-08T20:14:35.000Z",
+          "SyncedAt": "2026-07-01T12:16:07.332Z"
+        },
+        {
+          "DocEntry": 7,
+          "DocNum": 7,
+          "CardCode": "VEN006",
+          "CardName": "V**A",
+          "DocDate": "2024-08-08T00:00:00.000Z",
+          "DocDueDate": "2024-08-08T00:00:00.000Z",
+          "DocStatus": "O",
+          "DocTotal": "8588386.94",
+          "Comments": "Pallet Number 3",
+          "UpdatedInSap": "2024-08-08T20:16:55.000Z",
+          "SyncedAt": "2026-07-01T12:16:07.332Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-08-05T00:00:00.000Z",
+          "max": "2026-05-22T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "DocEntry": 0,
+        "CardCode": 0,
+        "DocStatus": 0
+      },
+      "distinctKeyExcess": {
+        "DocEntry": 0
+      }
+    },
+    "public.\"NeonAutoHubStockTransfers\"": {
+      "table": "public.\"NeonAutoHubStockTransfers\"",
+      "rowCountExact": 2398,
+      "sampleRows": [
+        {
+          "DocEntry": 3259,
+          "DocNum": 541,
+          "DocDate": "2024-07-01T00:00:00.000Z",
+          "Comments": "",
+          "UpdatedInSap": "2024-07-01T11:16:39.000Z",
+          "SyncedAt": "2026-07-01T12:15:37.121Z"
+        },
+        {
+          "DocEntry": 3260,
+          "DocNum": 542,
+          "DocDate": "2024-07-01T00:00:00.000Z",
+          "Comments": "",
+          "UpdatedInSap": "2024-07-01T13:59:21.000Z",
+          "SyncedAt": "2026-07-01T12:15:37.121Z"
+        },
+        {
+          "DocEntry": 3261,
+          "DocNum": 543,
+          "DocDate": "2024-07-01T00:00:00.000Z",
+          "Comments": "",
+          "UpdatedInSap": "2024-07-01T15:25:19.000Z",
+          "SyncedAt": "2026-07-01T12:15:37.121Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "DocDate": {
+          "min": "2024-07-01T00:00:00.000Z",
+          "max": "2026-07-10T00:00:00.000Z"
+        }
+      },
+      "nullRates": {
+        "DocEntry": 0
+      },
+      "distinctKeyExcess": {
+        "DocEntry": 0
+      }
+    },
+    "public.vin_decoded": {
+      "table": "public.vin_decoded",
+      "rowCountExact": 12405,
+      "sampleRows": [
+        {
+          "id": 1,
+          "vin": "WBAPE12050WJ87300",
+          "manufacturer_name": "BMW",
+          "model_name": "X3 2.0d",
+          "model_variant": "X3",
+          "engine_code": null,
+          "fuel_type": "Diesel",
+          "build_year": 2009,
+          "power_kw": 110,
+          "displacement": "2.0T",
+          "chassis_code": "E83",
+          "pr_codes": [
+            {
+              "code": "U300",
+              "description": "ALPINWEISS 3 (300)"
+            },
+            {
+              "code": "LUSW",
+              "description": "LEATHER, \\\"NEVADA\\\"/BLACK (LUSW)"
+            },
+            {
+              "code": "S169A",
+              "description": "EU3 exhaust emissions standard"
+            },
+            {
+              "code": "S205A",
+              "description": "Automatic transmission"
+            },
+            {
+              "code": "S235A",
+              "description": "Towing hitch, detachable"
+            },
+            {
+              "code": "S249A",
+              "description": "Multi-functional steering wheel,Multifunction f steering wheel"
+            },
+            {
+              "code": "S255A",
+              "description": "Sports leather steering wheel"
+            },
+            {
+              "code": "S2BPA",
+              "description": "BMW alloy wheel,doub.sp. 205,All Season"
+            },
+            {
+              "code": "S2PAA",
+              "description": "Locking wheel bolt"
+            },
+            {
+              "code": "S302A",
+              "description": "Alarm system"
+            },
+            {
+              "code": "S328A",
+              "description": "Aluminium pedals,Footplate, aluminium"
+            },
+            {
+              "code": "S354A",
+              "description": "Windscreen, green-tinted upper strip"
+            },
+            {
+              "code": "S386A",
+              "description": "Luggage railing,Roof railing"
+            },
+            {
+              "code": "S402A",
+              "description": "Panorama glass roof"
+            },
+            {
+              "code": "S413A",
+              "description": "Load area net,Luggage compartment net"
+            },
+            {
+              "code": "S423A",
+              "description": "Floor mat velours,Floor mats velours"
+            },
+            {
+              "code": "S428A",
+              "description": "Warning triangle and first aid kit"
+            },
+            {
+              "code": "S441A",
+              "description": "Smoker package"
+            },
+            {
+              "code": "S473A",
+              "description": "Armrest front"
+            },
+            {
+              "code": "S493A",
+              "description": "Storage compartment package"
+            },
+            {
+              "code": "S4ADA",
+              "description": "Interior trim strips, brushed aluminium"
+            },
+            {
+              "code": "S502A",
+              "description": "Headlight cleaning system"
+            },
+            {
+              "code": "S508A",
+              "description": "Park Distance Control (PDC)"
+            },
+            {
+              "code": "S521A",
+              "description": "Rain sensor"
+            },
+            {
+              "code": "S522A",
+              "description": "Xenon Light"
+            },
+            {
+              "code": "S534A",
+              "description": "Automatic air conditioning"
+            },
+            {
+              "code": "S548A",
+              "description": "Kilometre speedo"
+            },
+            {
+              "code": "S662A",
+              "description": "Radio BMW Business CD"
+            },
+            {
+              "code": "S692A",
+              "description": "Preparation, BMW 6-CD changer I-bus"
+            },
+            {
+              "code": "S818A",
+              "description": "Battery master switch"
+            },
+            {
+              "code": "S823A",
+              "description": "Hot-climate version"
+            },
+            {
+              "code": "S850A",
+              "description": "Dummy-SALAPA"
+            },
+            {
+              "code": "S853A",
+              "description": "Language version, English"
+            },
+            {
+              "code": "S861A",
+              "description": "Data record without EOBD"
+            },
+            {
+              "code": "S864A",
+              "description": "Dealer List Overseas"
+            },
+            {
+              "code": "S877A",
+              "description": "Omission of non-combined operation"
+            },
+            {
+              "code": "S880A",
+              "description": "On-board literature, English"
+            },
+            {
+              "code": "S8SMA",
+              "description": "Car ident. number visible from outside"
+            },
+            {
+              "code": "S925A",
+              "description": "Dummy-SALAPA"
+            },
+            {
+              "code": "S984A",
+              "description": "Maintenance interval encoding"
+            }
+          ],
+          "equipment_codes": [
+            {
+              "name": "Brand",
+              "value": "bmw"
+            },
+            {
+              "name": "Series And Chassis No",
+              "value": "X3 E83 LCI"
+            },
+            {
+              "name": "Series",
+              "value": "X3"
+            },
+            {
+              "name": "Model",
+              "value": "X3 2.0d"
+            },
+            {
+              "name": "Sales Desc",
+              "value": "X3 2.0sd"
+            },
+            {
+              "name": "Year",
+              "value": "2009"
+            },
+            {
+              "name": "Body",
+              "value": "SAV"
+            },
+            {
+              "name": "Door Num",
+              "value": "5"
+            },
+            {
+              "name": "Driving",
+              "value": "ALLR"
+            },
+            {
+              "name": "Engine",
+              "value": "N47"
+            },
+            {
+              "name": "Displacement",
+              "value": "2.0"
+            },
+            {
+              "name": "Power",
+              "value": "130"
+            },
+            {
+              "name": "Transmission",
+              "value": "AUT"
+            },
+            {
+              "name": "Colour Code",
+              "value": "U300"
+            },
+            {
+              "name": "Colour",
+              "value": "ALPINWEISS 3 (300)"
+            },
+            {
+              "name": "Upholstery Code",
+              "value": "LUSW"
+            },
+            {
+              "name": "Upholstery",
+              "value": "LEATHER, \\\"NEVADA\\\"/BLACK (LUSW)"
+            },
+            {
+              "name": "Steering",
+              "value": "R"
+            },
+            {
+              "name": "R & D Code",
+              "value": "E83N"
+            },
+            {
+              "name": "Area",
+              "value": "ECE"
+            },
+            {
+              "name": "Type Code",
+              "value": "PE12"
+            }
+          ],
+          "has_pr_codes": true,
+          "decode_status": "success",
+          "error_message": null,
+          "decoded_at": "2026-05-19T13:47:50.865Z"
+        },
+        {
+          "id": 2,
+          "vin": "WBAVG76070NL61565",
+          "manufacturer_name": "BMW",
+          "model_name": "320i",
+          "model_variant": "3 Series",
+          "engine_code": "N46B20CC",
+          "fuel_type": "Gasoline",
+          "build_year": 2008,
+          "power_kw": 110,
+          "displacement": "2.0L",
+          "chassis_code": null,
+          "pr_codes": [],
+          "equipment_codes": [
+            {
+              "name": "Brand",
+              "value": "bmw"
+            },
+            {
+              "name": "Series And Chassis No",
+              "value": "3' E90"
+            },
+            {
+              "name": "Series",
+              "value": "3'"
+            },
+            {
+              "name": "Model",
+              "value": "320i"
+            },
+            {
+              "name": "Sales Desc",
+              "value": "320i"
+            },
+            {
+              "name": "Year",
+              "value": "2007"
+            },
+            {
+              "name": "Body",
+              "value": "Saloon"
+            },
+            {
+              "name": "Door Num",
+              "value": "4"
+            },
+            {
+              "name": "Driving",
+              "value": "HECK"
+            },
+            {
+              "name": "Engine",
+              "value": "N46T"
+            },
+            {
+              "name": "Displacement",
+              "value": "2.0"
+            },
+            {
+              "name": "Power",
+              "value": "115"
+            },
+            {
+              "name": "Transmission",
+              "value": "AUT"
+            },
+            {
+              "name": "Steering",
+              "value": "R"
+            },
+            {
+              "name": "R & D Code",
+              "value": "E90"
+            },
+            {
+              "name": "Area",
+              "value": "ECE"
+            },
+            {
+              "name": "Type Code",
+              "value": "VG76"
+            }
+          ],
+          "has_pr_codes": false,
+          "decode_status": "no_pr",
+          "error_message": null,
+          "decoded_at": "2026-05-19T13:47:51.325Z"
+        },
+        {
+          "id": 3,
+          "vin": "WBAPA72090WB67312",
+          "manufacturer_name": "BMW",
+          "model_name": "xDrive2.5i",
+          "model_variant": "X3",
+          "engine_code": "256S5",
+          "fuel_type": "Gasoline",
+          "build_year": 2006,
+          "power_kw": 141,
+          "displacement": "2.5L",
+          "chassis_code": "E83",
+          "pr_codes": [],
+          "equipment_codes": [
+            {
+              "name": "Brand",
+              "value": "bmw"
+            },
+            {
+              "name": "Series And Chassis No",
+              "value": "X3 E83"
+            },
+            {
+              "name": "Series",
+              "value": "X3"
+            },
+            {
+              "name": "Model",
+              "value": "X3 2.5i"
+            },
+            {
+              "name": "Sales Desc",
+              "value": "X3 2.5i"
+            },
+            {
+              "name": "Year",
+              "value": "2005"
+            },
+            {
+              "name": "Body",
+              "value": "SAV"
+            },
+            {
+              "name": "Door Num",
+              "value": "5"
+            },
+            {
+              "name": "Driving",
+              "value": "ALLR"
+            },
+            {
+              "name": "Engine",
+              "value": "M54"
+            },
+            {
+              "name": "Displacement",
+              "value": "2.5"
+            },
+            {
+              "name": "Power",
+              "value": "141"
+            },
+            {
+              "name": "Transmission",
+              "value": "AUT"
+            },
+            {
+              "name": "Steering",
+              "value": "R"
+            },
+            {
+              "name": "R & D Code",
+              "value": "E83"
+            },
+            {
+              "name": "Area",
+              "value": "ECE"
+            },
+            {
+              "name": "Type Code",
+              "value": "PA72"
+            }
+          ],
+          "has_pr_codes": false,
+          "decode_status": "no_pr",
+          "error_message": null,
+          "decoded_at": "2026-05-19T13:47:51.493Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "decoded_at": {
+          "min": "2026-05-19T13:47:50.865Z",
+          "max": "2026-05-19T15:52:32.633Z"
+        }
+      },
+      "nullRates": {
+        "vin": 0,
+        "decode_status": 0,
+        "manufacturer_name": 56.16
+      },
+      "distinctKeyExcess": {
+        "vin": 0
+      }
+    },
+    "public.tecdoc_vehicle": {
+      "table": "public.tecdoc_vehicle",
+      "rowCountExact": 17338,
+      "sampleRows": [
+        {
+          "id": 5,
+          "tecdoc_id": 6885,
+          "name": "1.8",
+          "manufacturer_id": 1,
+          "model_id": 502,
+          "engine_code": "ZX",
+          "fuel_type": "Petrol",
+          "power_kw": 66,
+          "power_hp": 90,
+          "capacity_cc": 1760,
+          "year_from": "1968-11-01",
+          "year_to": "1971-11-01",
+          "part_count": 0,
+          "category_count": 355,
+          "active": true,
+          "create_date": "2026-03-09T15:36:09.919Z",
+          "write_date": "2026-03-09T18:58:12.917Z"
+        },
+        {
+          "id": 6,
+          "tecdoc_id": 1149,
+          "name": "1.8",
+          "manufacturer_id": 1,
+          "model_id": 502,
+          "engine_code": "ZS",
+          "fuel_type": "Petrol",
+          "power_kw": 74,
+          "power_hp": 100,
+          "capacity_cc": 1760,
+          "year_from": "1970-10-01",
+          "year_to": "1976-07-01",
+          "part_count": 0,
+          "category_count": 372,
+          "active": true,
+          "create_date": "2026-03-09T15:36:10.000Z",
+          "write_date": "2026-03-09T18:58:12.980Z"
+        },
+        {
+          "id": 7,
+          "tecdoc_id": 6884,
+          "name": "1.8",
+          "manufacturer_id": 1,
+          "model_id": 502,
+          "engine_code": "ZV",
+          "fuel_type": "Petrol",
+          "power_kw": 59,
+          "power_hp": 80,
+          "capacity_cc": 1760,
+          "year_from": "1968-11-01",
+          "year_to": "1971-11-01",
+          "part_count": 0,
+          "category_count": 376,
+          "active": true,
+          "create_date": "2026-03-09T15:36:10.068Z",
+          "write_date": "2026-03-09T18:58:13.042Z"
+        }
+      ],
+      "dateColumnRanges": {
+        "create_date": {
+          "min": "2026-03-09T15:36:09.605Z",
+          "max": "2026-03-09T15:58:58.319Z"
+        }
+      },
+      "nullRates": {
+        "tecdoc_id": 0,
+        "manufacturer_id": 0
+      },
+      "distinctKeyExcess": {
+        "tecdoc_id": 0
+      }
+    },
+    "public.tecdoc_article": {
+      "table": "public.tecdoc_article",
+      "rowCountExact": 15723,
+      "sampleRows": [
+        {
+          "id": 138,
+          "tecdoc_article_id": 3379347,
+          "article_number": "45050054901",
+          "name": "Link/Coupling Rod, stabiliser bar",
+          "supplier_name": "vika",
+          "supplier_id": 4346,
+          "product_id": 3229,
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/images/4346/d3d228b386f5a14c487af3318f93f14020566492.webp",
+          "canonical_oem_number": "1K0505465AA",
+          "ean_barcode": "6923570448819",
+          "weight_kg": "0",
+          "spec_count": 8,
+          "compatible_vehicles_count": 754,
+          "enrichment_status": "enriched",
+          "categories_synced": true,
+          "active": true,
+          "create_date": "2026-03-12T20:56:03.576Z",
+          "write_date": "2026-03-16T04:40:08.739Z",
+          "part_group": "Suspension & Axle",
+          "part_component": "Stabiliser Bar Link/Coupling Rod",
+          "part_group_confidence": "high"
+        },
+        {
+          "id": 158,
+          "tecdoc_article_id": 3339558,
+          "article_number": "44070037901",
+          "name": "Control/Trailing Arm, wheel suspension",
+          "supplier_name": "vika",
+          "supplier_id": 4346,
+          "product_id": 273,
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/images/4346/01a505659c9fb1a01e838e76b72ee5a8534c8476.webp",
+          "canonical_oem_number": "1K0407152AA",
+          "ean_barcode": "6936397422276",
+          "weight_kg": null,
+          "spec_count": 3,
+          "compatible_vehicles_count": 438,
+          "enrichment_status": "enriched",
+          "categories_synced": true,
+          "active": true,
+          "create_date": "2026-03-12T20:56:04.994Z",
+          "write_date": "2026-03-16T04:40:08.739Z",
+          "part_group": "Suspension & Axle",
+          "part_component": "Wheel Suspension Control/Trailing Arm",
+          "part_group_confidence": "high"
+        },
+        {
+          "id": 204,
+          "tecdoc_article_id": 3850670,
+          "article_number": "55981337501",
+          "name": "Wheel Bearing Kit",
+          "supplier_name": "vika",
+          "supplier_id": 4346,
+          "product_id": 654,
+          "image_url": "https://fsn1.your-objectstorage.com/tecdoc2025/media_files/images/4346/35016c9377a70488c2598daf45f2155a2de49105.webp",
+          "canonical_oem_number": "1KD407621B",
+          "ean_barcode": "6936397430875",
+          "weight_kg": null,
+          "spec_count": 2,
+          "compatible_vehicles_count": 736,
+          "enrichment_status": "enriched",
+          "categories_synced": true,
+          "active": true,
+          "create_date": "2026-03-12T20:56:06.026Z",
+          "write_date": "2026-03-16T03:25:33.774Z",
+          "part_group": "Suspension & Axle",
+          "part_component": "Wheel Bearing Kit",
+          "part_group_confidence": "high"
+        }
+      ],
+      "dateColumnRanges": {
+        "create_date": {
+          "min": "2026-03-12T20:55:42.138Z",
+          "max": "2026-03-23T12:33:16.291Z"
+        }
+      },
+      "nullRates": {
+        "tecdoc_article_id": 0,
+        "canonical_oem_number": 0.22
+      },
+      "distinctKeyExcess": {
+        "tecdoc_article_id": 0
+      }
+    }
+  }
+}

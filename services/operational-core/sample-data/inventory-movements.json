@@ -1,0 +1,12 @@
+[
+  { "sourceRecordId": "ob-0001", "itemCode": "12-13-8-616-153", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 40, "unitCost": 45, "occurredAt": "2026-01-05T08:00:00Z" },
+  { "sourceRecordId": "ob-0002", "itemCode": "06H-121-026-CQ", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 3, "unitCost": 210, "occurredAt": "2026-01-05T08:01:00Z" },
+  { "sourceRecordId": "ob-0003", "itemCode": "A2729004000", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 5, "unitCost": 640, "occurredAt": "2025-11-01T08:00:00Z" },
+  { "sourceRecordId": "ob-0004", "itemCode": "LR044360", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 1, "unitCost": 380, "occurredAt": "2026-07-01T08:00:00Z" },
+  { "sourceRecordId": "ob-0005", "itemCode": "7PP-907-063-N", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 1, "unitCost": 1450, "occurredAt": "2025-08-01T08:00:00Z" },
+  { "sourceRecordId": "ob-0006", "itemCode": "11427566327", "itemKind": "PART", "warehouseCode": "DSM01-MAIN", "quantity": 15, "unitCost": 8, "occurredAt": "2026-01-05T08:02:00Z" },
+  { "sourceRecordId": "ob-0007", "itemCode": "12-13-8-616-153", "itemKind": "PART", "warehouseCode": "ARU01-MAIN", "quantity": 2, "unitCost": 45, "occurredAt": "2026-01-05T08:03:00Z" },
+  { "sourceRecordId": "ob-0008", "itemCode": "LUB-ENG-5W30-1L", "itemKind": "LUBRICANT", "warehouseCode": "DSM01-LUBE", "quantity": 60, "unitCost": 9500, "occurredAt": "2026-01-05T08:04:00Z" },
+  { "sourceRecordId": "ob-0009", "itemCode": "LUB-DSG-1L", "itemKind": "LUBRICANT", "warehouseCode": "DSM01-LUBE", "quantity": 10, "unitCost": 21000, "occurredAt": "2026-01-05T08:05:00Z" },
+  { "sourceRecordId": "ob-0010", "itemCode": "LUB-COOL-1L", "itemKind": "LUBRICANT", "warehouseCode": "DSM01-LUBE", "quantity": 20, "unitCost": 7000, "occurredAt": "2026-01-05T08:06:00Z" }
+]

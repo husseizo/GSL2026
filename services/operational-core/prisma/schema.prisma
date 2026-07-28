@@ -1,0 +1,5166 @@
+// AIOS Phase 1 — Vehicle master, Parts master, Integration/sync layer.
+// See docs/architecture/01-data-model.md for the full target model;
+// this schema implements only the fields flagged [P1] there.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  CONFLICT
+  ERROR
+}
+
+enum DecodeConfidence {
+  EXACT
+  HIGH
+  MEDIUM
+  LOW
+  UNVERIFIED
+}
+
+enum PartNumberType {
+  ALTERNATE_OEM
+  MANUFACTURER
+  SUPPLIER
+  SUPERSEDED
+  CROSS_REFERENCE
+}
+
+enum MatchStage {
+  RULE_BASED
+  SIMILARITY
+}
+
+enum MatchCandidateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DeadLetterStage {
+  VALIDATE
+  NORMALIZE
+  UPSERT
+}
+
+enum SyncRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// Phase 2 adds LUBRICANTS_MANAGER, PURCHASING_OFFICER, SALESPERSON, AUDITOR.
+// Existing Phase 1 values are kept exactly as-is (not renamed) — see
+// docs/architecture/rbac-permissions.md for the mapping from this enum to
+// the Phase 2 permission spec's role names (e.g. SYSTEM_ADMINISTRATOR here
+// is that spec's "SYSTEM_ADMIN", READ_ONLY_VIEWER is its "VIEWER").
+enum Role {
+  SYSTEM_ADMINISTRATOR
+  OWNER
+  GENERAL_MANAGER
+  BRANCH_MANAGER
+  PARTS_MANAGER
+  LUBRICANTS_MANAGER
+  STOREKEEPER
+  PURCHASING_OFFICER
+  PURCHASING_MANAGER
+  SALESPERSON
+  DATA_QUALITY_REVIEWER
+  AUDITOR
+  READ_ONLY_VIEWER
+  // Phase 3 garage roles. "Viewer" from the Phase 3 spec maps to
+  // READ_ONLY_VIEWER (already exists) — see docs/architecture/garage-rbac.md.
+  GARAGE_MANAGER
+  WORKSHOP_SUPERVISOR
+  RECEPTION
+  TECHNICIAN
+  DIAGNOSTIC_TECHNICIAN
+  QUALITY_INSPECTOR
+  SERVICE_ADVISOR
+  // DGX Prototype 1.7 (Automotive Knowledge Platform) addition — a
+  // dedicated technical/licensing knowledge-review persona. No existing
+  // role's semantics fit (DATA_QUALITY_REVIEWER's read set is import/
+  // mapping-quality focused, not technical-content-authority focused). See
+  // docs/knowledge-platform/permissions-and-roles.md.
+  KNOWLEDGE_STEWARD
+}
+
+// ---------------------------------------------------------------------------
+// RBAC skeleton (Phase 1: enough to demonstrate guards; full CRM/user
+// management is a later phase)
+// ---------------------------------------------------------------------------
+
+// Phase 1-4 used this purely for attribution (who reviewed a match, who
+// resolved a dead letter) with no login of its own — the whole system ran
+// on the x-user-role header stand-in. Phase 5's Identity Platform makes
+// this the same table's row a real authenticatable identity instead of
+// introducing a parallel AppUser model — every existing back-relation
+// (PartMatchCandidate.reviewedBy, VehicleAttributeHistory.changedBy,
+// SyncDeadLetter.resolvedBy) now points at a real logged-in user rather
+// than a free-text attribution string. See docs/architecture/identity-platform.md.
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      Role
+  branchId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Phase 5 — Identity Platform additions. All nullable/defaulted so every
+  // existing Phase 1-4 User row (and every existing test fixture) remains
+  // valid without a data migration.
+  passwordHash       String?
+  isActive           Boolean   @default(true)
+  isEmailVerified    Boolean   @default(false)
+  mfaEnabled         Boolean   @default(false)
+  mfaSecretEncrypted String? // AES-256-GCM ciphertext, never plaintext — see security-production.md
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime?
+  passwordChangedAt  DateTime?
+
+  reviewedMatchCandidates PartMatchCandidate[]      @relation("ReviewedBy")
+  vehicleAttributeChanges VehicleAttributeHistory[]
+  resolvedDeadLetters     SyncDeadLetter[]
+
+  sessions                UserSession[]
+  refreshTokens           RefreshToken[]
+  loginHistory            LoginHistoryEntry[]
+  devices                 TrustedDevice[]
+  apiKeys                 ApiKey[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  notificationPreferences NotificationPreference[]
+  notificationDispatches  NotificationDispatch[]
+
+  entityMatchCandidatesReviewed EntityMatchCandidate[] @relation("EntityMatchReviewedBy")
+  manualReviewItemsReviewed     ManualReviewItem[]     @relation("ManualReviewReviewedBy")
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------------------------
+// Integration layer
+// ---------------------------------------------------------------------------
+
+model IntegrationSource {
+  id                  String   @id @default(uuid())
+  name                String   @unique // e.g. "LEGACY_POS", "LEGACY_ERP"
+  adapterType         String // e.g. "FileDropAdapter", "PostgresCdcAdapter"
+  lastCommittedCursor String? // opaque, adapter-owned
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Data Consolidation phase additions (nullable/additive — every existing
+  // IntegrationSource row from Phase 1 remains valid unchanged). `name` is
+  // reused directly as the unique feed identity required by
+  // docs/data-consolidation/decision-log.md (e.g.
+  // "MOLAS_CACHE_LUBRICANTS_CUSTOMERS") — this IS the fix for the
+  // cursor-collision class of bug, not a new mechanism.
+  extractionMode String? // "FULL_BACKFILL" | "INCREMENTAL" | "DATE_RANGE"
+  schemaVersion  String?
+
+  syncRuns SyncRun[]
+}
+
+model SyncRun {
+  id              String            @id @default(uuid())
+  sourceId        String
+  source          IntegrationSource @relation(fields: [sourceId], references: [id])
+  status          SyncRunStatus     @default(RUNNING)
+  startedAt       DateTime          @default(now())
+  finishedAt      DateTime?
+  cursorBefore    String?
+  cursorAfter     String?
+  recordsFetched  Int               @default(0)
+  recordsUpserted Int               @default(0)
+  recordsSkipped  Int               @default(0)
+  recordsFailed   Int               @default(0)
+  error           String?
+
+  // Data Consolidation phase: a SyncRun *is* an import batch — see the
+  // note above RawRecordProcessingStatus.
+  rawSourceRecords      RawSourceRecord[]
+  reconciliationReports ReconciliationReport[]
+
+  @@index([sourceId, startedAt])
+}
+
+model SyncDeadLetter {
+  id             String          @id @default(uuid())
+  sourceSystem   String
+  sourceRecordId String
+  entityType     String // "VEHICLE" | "PART"
+  stage          DeadLetterStage
+  rawPayload     Json
+  error          String
+  retryCount     Int             @default(0)
+  firstSeenAt    DateTime        @default(now())
+  lastSeenAt     DateTime        @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?           @relation(fields: [resolvedById], references: [id])
+  resolution     String?
+
+  @@unique([sourceSystem, sourceRecordId, entityType, stage])
+  @@index([sourceSystem, resolvedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle master
+// ---------------------------------------------------------------------------
+
+model Vehicle {
+  id String @id @default(uuid())
+
+  // sync envelope — nullable because a vehicle can be created natively (no source)
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String? // usually the VIN, kept separate so it survives a VIN correction
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  vin                String?   @unique
+  registrationNumber String?
+  brand              String
+  model              String
+  variant            String?
+  modelYear          Int?
+  productionDate     DateTime?
+  engineCode         String?
+  engineFamily       String?
+  displacementCc     Int?
+  fuelType           String?
+  powertrainType     String?
+  transmissionCode   String?
+  driveType          String?
+  bodyType           String?
+  marketSpec         String?
+
+  // decode confidence per field, e.g. {"engineCode": "HIGH", "modelYear": "EXACT"}
+  decodeConfidence Json?
+  decodeSource     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attributeHistory VehicleAttributeHistory[]
+
+  // Phase 2 back-relations (docs/architecture/phase-2-commercial-foundation.md)
+  customerLinks      CustomerVehicleLink[]
+  salesLines         SalesDocumentLine[]
+  appEvents          AppEvent[]
+  lostSaleCandidates LostSaleCandidate[]
+
+  // Phase 3 back-relations (docs/architecture/garage-architecture.md)
+  receptions        VehicleReception[]
+  garageJobs        GarageJob[]
+  complaints        CustomerComplaint[]
+  repeatRepairFlags RepeatRepairFlag[]
+  notifications     NotificationEvent[]
+
+  // Phase 4 back-relation (docs/architecture/dgx-platform.md)
+  knowledgeDocuments KnowledgeDocument[]
+
+  // DGX Prototype 1.7 back-relation (docs/knowledge-platform/applicability-model.md)
+  knowledgeApplicabilities KnowledgeItemVehicleApplicability[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([brand, model, modelYear])
+}
+
+model VehicleAttributeHistory {
+  id          String           @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle          @relation(fields: [vehicleId], references: [id])
+  field       String
+  oldValue    String?
+  newValue    String?
+  reason      String?
+  confidence  DecodeConfidence @default(UNVERIFIED)
+  changedById String?
+  changedBy   User?            @relation(fields: [changedById], references: [id])
+  changedAt   DateTime         @default(now())
+
+  @@index([vehicleId, field])
+}
+
+// ---------------------------------------------------------------------------
+// Parts master
+// ---------------------------------------------------------------------------
+
+model Part {
+  id String @id @default(uuid())
+
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  internalItemCode        String? @unique
+  oemNumber               String
+  brand                   String?
+  productName             String
+  standardizedProductName String
+  category                String?
+  subcategory             String?
+  // DGX Prototype 1 addition — real tecdoc_article_id values exist in the
+  // raw oitm payload (see docs/data-sources/parts-catalogue-quality.md) but
+  // were never promoted to the canonical Part row; TecDoc-identifier
+  // retrieval (a named prototype capability) needs a real, indexed field
+  // rather than reaching into RawSourceRecord JSON on every query.
+  tecdocArticleId         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  alternateNumbers   PartAlternateNumber[]
+  compatibility      PartCompatibility[]
+  matchCandidatesAsA PartMatchCandidate[]  @relation("PartA")
+  matchCandidatesAsB PartMatchCandidate[]  @relation("PartB")
+
+  // Phase 2 back-relations (docs/architecture/phase-2-commercial-foundation.md)
+  salesLines                SalesDocumentLine[]
+  purchaseLines             PurchaseDocumentLine[]
+  goodsReceiptLines         GoodsReceiptLine[]
+  inventoryMovements        InventoryMovement[]
+  inventoryBalances         InventoryBalance[]
+  stockReservations         StockReservation[]
+  stockTransferLines        StockTransferLine[]
+  inventoryAdjustments      InventoryAdjustment[]
+  stockSnapshots            StockSnapshot[]
+  appEvents                 AppEvent[]
+  lostSaleCandidates        LostSaleCandidate[]
+  itemMetrics               InventoryItemMetric[]
+  purchaseRecommendations   PurchaseRecommendation[]
+  transferRecommendations   TransferRecommendation[]
+  planningProfiles          ItemPlanningProfile[]
+  garageJobLines            GarageJobLine[]
+  requiredInInspections     InspectionResult[]
+  estimateLines             EstimateLine[]
+  workshopInventoryRequests WorkshopInventoryRequest[]
+  knowledgeDocuments        KnowledgeDocument[]
+  externalRefs              PartExternalReference[]
+  relationshipsFrom         PartRelationship[]         @relation("RelationshipFrom")
+  relationshipsTo           PartRelationship[]         @relation("RelationshipTo")
+  knowledgeApplicabilities  KnowledgeItemPartApplicability[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([oemNumber])
+  @@index([standardizedProductName])
+  @@index([tecdocArticleId])
+}
+
+model PartAlternateNumber {
+  id     String         @id @default(uuid())
+  partId String
+  part   Part           @relation(fields: [partId], references: [id])
+  number String
+  type   PartNumberType
+
+  @@unique([partId, number, type])
+  @@index([number])
+}
+
+model PartCompatibility {
+  id               String  @id @default(uuid())
+  partId           String
+  part             Part    @relation(fields: [partId], references: [id])
+  brand            String
+  model            String?
+  modelYearFrom    Int?
+  modelYearTo      Int?
+  engineCode       String?
+  transmissionCode String?
+
+  @@index([brand, model])
+  @@index([partId])
+}
+
+// Proposed duplicate/alternate matches between two part records.
+// Never auto-merged — see docs/architecture/01-data-model.md §3.
+model PartMatchCandidate {
+  id           String               @id @default(uuid())
+  partAId      String
+  partA        Part                 @relation("PartA", fields: [partAId], references: [id])
+  partBId      String
+  partB        Part                 @relation("PartB", fields: [partBId], references: [id])
+  stage        MatchStage
+  score        Float
+  rationale    String
+  status       MatchCandidateStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?                @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt    DateTime             @default(now())
+
+  @@unique([partAId, partBId, stage])
+  @@index([status])
+}
+
+// =============================================================================
+// PHASE 2 — Commercial Data Foundation and Inventory Intelligence
+// See docs/architecture/phase-2-commercial-foundation.md for the domain design
+// and docs/architecture/decision-log.md for why each simplification was made.
+// =============================================================================
+
+enum ItemType {
+  PART
+  LUBRICANT
+  LABOUR
+  SERVICE
+  MISCELLANEOUS
+  UNKNOWN
+}
+
+enum RecommendationConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT_DATA
+}
+
+// ---------------------------------------------------------------------------
+// 2.1 Organization and locations
+// ---------------------------------------------------------------------------
+
+enum WarehouseType {
+  MAIN
+  RETAIL
+  GARAGE
+  LUBRICANTS
+  TRANSIT
+  QUARANTINE
+  DAMAGED
+  RETURNS
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches      Branch[]
+  configuration OrganizationConfiguration?
+}
+
+model Branch {
+  id             String       @id @default(uuid())
+  code           String
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  address        String?
+  phone          String?
+  email          String?
+  timezone       String       @default("Africa/Dar_es_Salaam")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  warehouses         Warehouse[]
+  customers          Customer[]
+  salesDocuments     SalesDocument[]
+  purchaseDocuments  PurchaseDocument[]
+  lostSaleCandidates LostSaleCandidate[]
+  receptions         VehicleReception[]
+  garageJobs         GarageJob[]
+  technicians        Technician[]
+  labourRates        LabourRate[]
+
+  // Phase 5 — Branch Gateway / edge operations back-relations
+  outboxMessages BranchOutboxMessage[]
+  healthPings    BranchHealthPing[]
+
+  // Data Consolidation phase — multi-source branch-code mapping
+  externalRefs BranchExternalReference[]
+
+  @@unique([organizationId, code])
+}
+
+model Warehouse {
+  id                    String        @id @default(uuid())
+  code                  String
+  name                  String
+  branchId              String
+  branch                Branch        @relation(fields: [branchId], references: [id])
+  warehouseType         WarehouseType @default(MAIN)
+  isSellable            Boolean       @default(true)
+  isServiceWarehouse    Boolean       @default(false)
+  isTransitWarehouse    Boolean       @default(false)
+  isQuarantineWarehouse Boolean       @default(false)
+  isActive              Boolean       @default(true)
+  // AI Foundation Certification Sprint — Phase II Sprint 1 (see
+  // docs/adr/ADR-0001-warehouse-capacity.md). `null` = no real, known
+  // capacity limit for this warehouse — additive, does not affect existing
+  // behavior until a real value is set for a given warehouse.
+  capacity              Decimal?      @db.Decimal(14, 3)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  salesDocuments            SalesDocument[]
+  salesDocumentLines        SalesDocumentLine[]
+  purchaseDocuments         PurchaseDocument[]
+  goodsReceipts             GoodsReceipt[]
+  inventoryMovements        InventoryMovement[]
+  inventoryBalances         InventoryBalance[]
+  stockReservations         StockReservation[]
+  inventoryAdjustments      InventoryAdjustment[]
+  stockSnapshots            StockSnapshot[]
+  itemMetrics               InventoryItemMetric[]
+  lostSaleCandidates        LostSaleCandidate[]
+  purchaseRecommendations   PurchaseRecommendation[]
+  transfersOut              StockTransfer[]              @relation("TransferSource")
+  transfersIn               StockTransfer[]              @relation("TransferDestination")
+  transferRecsAsSource      TransferRecommendation[]     @relation("TransferRecSource")
+  transferRecsAsDestination TransferRecommendation[]     @relation("TransferRecDestination")
+  garageJobs                GarageJob[]
+  workshopInventoryRequests WorkshopInventoryRequest[]
+  externalRefs              WarehouseExternalReference[]
+
+  @@unique([branchId, code])
+}
+
+// ---------------------------------------------------------------------------
+// 2.2 Customer master
+// ---------------------------------------------------------------------------
+
+enum CustomerType {
+  INDIVIDUAL
+  CORPORATE
+  DEALER
+  GARAGE
+  FLEET
+  GOVERNMENT
+  INTERNAL
+}
+
+model Customer {
+  id                String       @id @default(uuid())
+  customerCode      String       @unique
+  legalName         String
+  displayName       String
+  customerType      CustomerType @default(INDIVIDUAL)
+  phone             String?
+  secondaryPhone    String?
+  email             String?
+  taxNumber         String?
+  creditLimit       Decimal?     @db.Decimal(14, 2)
+  pricingGroup      String?
+  preferredBranchId String?
+  preferredBranch   Branch?      @relation(fields: [preferredBranchId], references: [id])
+  isActive          Boolean      @default(true)
+
+  // sync envelope — same pattern as Vehicle/Part (Phase 1). Nullable: a
+  // customer can also be created natively, not just imported.
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts           CustomerContact[]
+  addresses          CustomerAddress[]
+  vehicleLinks       CustomerVehicleLink[]
+  externalRefs       CustomerExternalReference[]
+  salesDocuments     SalesDocument[]
+  lostSaleCandidates LostSaleCandidate[]
+  receptions         VehicleReception[]
+  garageJobs         GarageJob[]
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+model CustomerContact {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  name       String?
+  role       String?
+  phone      String?
+  email      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model CustomerAddress {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  label      String?
+  line1      String?
+  line2      String?
+  city       String?
+  region     String?
+  country    String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// A vehicle may have more than one associated customer over its life (owner
+// changes, fleet drivers) — kept as a link table rather than a scalar FK on
+// Vehicle so history isn't lost when ownership changes.
+model CustomerVehicleLink {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  vehicleId    String
+  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id])
+  relationship String   @default("OWNER") // OWNER | DRIVER | FLEET_MANAGER
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@unique([customerId, vehicleId])
+}
+
+model CustomerExternalReference {
+  id             String   @id @default(uuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  sourceSystem   String
+  sourceRecordId String
+  createdAt      DateTime @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+// ---------------------------------------------------------------------------
+// 2.3 Lubricants master
+// ---------------------------------------------------------------------------
+
+enum LubricantCategory {
+  ENGINE_OIL
+  ATF
+  DSG_FLUID
+  GEAR_OIL
+  DIFFERENTIAL_OIL
+  TRANSFER_CASE_FLUID
+  COOLANT
+  BRAKE_FLUID
+  HYDRAULIC_FLUID
+  POWER_STEERING_FLUID
+  ADBLUE
+  ADDITIVE
+  CLEANER
+  WORKSHOP_CHEMICAL
+}
+
+model LubricantProduct {
+  id                  String            @id @default(uuid())
+  internalCode        String?           @unique
+  brand               String
+  productName         String
+  normalizedName      String
+  category            LubricantCategory
+  viscosity           String?
+  packageSize         Decimal?          @db.Decimal(10, 3)
+  packageUnit         String?
+  apiClassification   String?
+  aceaClassification  String?
+  currentCost         Decimal?          @db.Decimal(14, 4)
+  defaultSellingPrice Decimal?          @db.Decimal(14, 4)
+  isActive            Boolean           @default(true)
+
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  approvals        LubricantApproval[]
+  compatibility    LubricantCompatibility[]
+  alternativesFrom LubricantAlternative[]       @relation("AltFrom")
+  alternativesTo   LubricantAlternative[]       @relation("AltTo")
+  externalRefs     LubricantExternalReference[]
+
+  salesLines                SalesDocumentLine[]
+  purchaseLines             PurchaseDocumentLine[]
+  goodsReceiptLines         GoodsReceiptLine[]
+  inventoryMovements        InventoryMovement[]
+  inventoryBalances         InventoryBalance[]
+  stockReservations         StockReservation[]
+  stockTransferLines        StockTransferLine[]
+  inventoryAdjustments      InventoryAdjustment[]
+  stockSnapshots            StockSnapshot[]
+  appEvents                 AppEvent[]
+  lostSaleCandidates        LostSaleCandidate[]
+  itemMetrics               InventoryItemMetric[]
+  purchaseRecommendations   PurchaseRecommendation[]
+  transferRecommendations   TransferRecommendation[]
+  planningProfiles          ItemPlanningProfile[]
+  garageJobLines            GarageJobLine[]
+  requiredInInspections     InspectionResult[]
+  estimateLines             EstimateLine[]
+  workshopInventoryRequests WorkshopInventoryRequest[]
+  knowledgeDocuments        KnowledgeDocument[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([normalizedName])
+  @@index([category])
+}
+
+// Approvals are stored exactly as supplied by the source — never inferred.
+// `isVerified` is a separate, human-set flag (see docs/architecture/phase-2-commercial-foundation.md §3).
+model LubricantApproval {
+  id                 String           @id @default(uuid())
+  lubricantProductId String
+  lubricantProduct   LubricantProduct @relation(fields: [lubricantProductId], references: [id])
+  oemBrand           String
+  approvalCode       String
+  isVerified         Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+
+  @@unique([lubricantProductId, oemBrand, approvalCode])
+}
+
+model LubricantCompatibility {
+  id                  String           @id @default(uuid())
+  lubricantProductId  String
+  lubricantProduct    LubricantProduct @relation(fields: [lubricantProductId], references: [id])
+  brand               String
+  model               String?
+  modelYearFrom       Int?
+  modelYearTo         Int?
+  engineCode          String?
+  transmissionCode    String?
+  serviceIntervalKm   Int?
+  estimatedFillLitres Decimal?         @db.Decimal(6, 2)
+  createdAt           DateTime         @default(now())
+
+  @@index([brand, model])
+}
+
+// A proposed alternative between two lubricant products. Reuses Phase 1's
+// MatchCandidateStatus enum deliberately: same "propose, never auto-approve"
+// shape as PartMatchCandidate.
+model LubricantAlternative {
+  id              String               @id @default(uuid())
+  lubricantId     String
+  lubricant       LubricantProduct     @relation("AltFrom", fields: [lubricantId], references: [id])
+  alternativeId   String
+  alternative     LubricantProduct     @relation("AltTo", fields: [alternativeId], references: [id])
+  alternativeType String // EXACT_APPROVED | COMPATIBLE | WORKSHOP_PREFERRED | BUDGET
+  status          MatchCandidateStatus @default(PENDING)
+  rationale       String?
+  createdAt       DateTime             @default(now())
+
+  @@unique([lubricantId, alternativeId])
+}
+
+model LubricantExternalReference {
+  id                 String           @id @default(uuid())
+  lubricantProductId String
+  lubricantProduct   LubricantProduct @relation(fields: [lubricantProductId], references: [id])
+  sourceSystem       String
+  sourceRecordId     String
+  createdAt          DateTime         @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+// ---------------------------------------------------------------------------
+// 2.4 Sales transactions
+// ---------------------------------------------------------------------------
+
+enum SalesDocumentType {
+  QUOTATION
+  SALES_ORDER
+  DELIVERY
+  INVOICE
+  CREDIT_NOTE
+  RETURN
+  COUNTER_SALE
+}
+
+enum SalesDocumentStatus {
+  DRAFT
+  OPEN
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CLOSED
+  CANCELLED
+  RETURNED
+}
+
+model SalesDocument {
+  id                     String              @id @default(uuid())
+  documentNumber         String
+  externalDocumentNumber String?
+  documentType           SalesDocumentType
+  status                 SalesDocumentStatus @default(OPEN)
+  customerId             String?
+  customer               Customer?           @relation(fields: [customerId], references: [id])
+  // Raw source customer code when it doesn't resolve to a Customer master
+  // record — see docs/architecture/phase-2-commercial-foundation.md §2.2 for
+  // why this is a field rather than a separate "unresolved reference" table.
+  unresolvedCustomerRef  String?
+  branchId               String?
+  branch                 Branch?             @relation(fields: [branchId], references: [id])
+  warehouseId            String?
+  warehouse              Warehouse?          @relation(fields: [warehouseId], references: [id])
+  // Phase 3: a garage invoice reuses SalesDocument (documentType INVOICE)
+  // rather than a parallel invoicing model — see garage-architecture.md.
+  garageJobId            String?
+  garageJob              GarageJob?          @relation(fields: [garageJobId], references: [id])
+  salespersonExternalId  String?
+  documentDate           DateTime
+  postingDate            DateTime?
+  dueDate                DateTime?
+  currency               String              @default("TZS")
+  exchangeRate           Decimal             @default(1) @db.Decimal(12, 6)
+  subtotal               Decimal             @default(0) @db.Decimal(14, 2)
+  discountTotal          Decimal             @default(0) @db.Decimal(14, 2)
+  taxTotal               Decimal             @default(0) @db.Decimal(14, 2)
+  grandTotal             Decimal             @default(0) @db.Decimal(14, 2)
+  paidAmount             Decimal             @default(0) @db.Decimal(14, 2)
+  outstandingAmount      Decimal             @default(0) @db.Decimal(14, 2)
+  isCancelled            Boolean             @default(false)
+
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines        SalesDocumentLine[]
+  externalRefs SalesExternalReference[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([documentNumber])
+  @@index([branchId, documentDate])
+  @@index([customerId])
+}
+
+model SalesDocumentLine {
+  id                    String            @id @default(uuid())
+  salesDocumentId       String
+  salesDocument         SalesDocument     @relation(fields: [salesDocumentId], references: [id])
+  lineNumber            Int
+  itemType              ItemType          @default(UNKNOWN)
+  partId                String?
+  part                  Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId    String?
+  lubricantProduct      LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  unresolvedItemCode    String?
+  originalDescription   String?
+  normalizedDescription String?
+  quantity              Decimal           @db.Decimal(12, 3)
+  unitPrice             Decimal           @db.Decimal(14, 4)
+  discountAmount        Decimal           @default(0) @db.Decimal(14, 2)
+  taxAmount             Decimal           @default(0) @db.Decimal(14, 2)
+  lineTotal             Decimal           @db.Decimal(14, 2)
+  costAtSale            Decimal?          @db.Decimal(14, 4)
+  warehouseId           String?
+  warehouse             Warehouse?        @relation(fields: [warehouseId], references: [id])
+  vehicleId             String?
+  vehicle               Vehicle?          @relation(fields: [vehicleId], references: [id])
+  garageJobExternalId   String?
+
+  sourceSystem   String?
+  sourceRecordId String?
+  checksum       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([salesDocumentId, lineNumber])
+  @@index([partId])
+  @@index([lubricantProductId])
+  @@index([vehicleId])
+}
+
+model SalesExternalReference {
+  id              String        @id @default(uuid())
+  salesDocumentId String
+  salesDocument   SalesDocument @relation(fields: [salesDocumentId], references: [id])
+  sourceSystem    String
+  sourceRecordId  String
+  createdAt       DateTime      @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+// ---------------------------------------------------------------------------
+// 2.5 Purchases
+// ---------------------------------------------------------------------------
+
+enum PurchaseDocumentType {
+  PURCHASE_REQUEST
+  REQUEST_FOR_QUOTATION
+  PURCHASE_ORDER
+  GOODS_RECEIPT
+  SUPPLIER_INVOICE
+  PURCHASE_RETURN
+}
+
+enum PurchaseDocumentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+model Supplier {
+  id                  String  @id @default(uuid())
+  supplierCode        String  @unique
+  legalName           String
+  displayName         String
+  phone               String?
+  email               String?
+  currency            String  @default("USD")
+  paymentTerms        String?
+  defaultLeadTimeDays Int?
+  isActive            Boolean @default(true)
+
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseDocuments PurchaseDocument[]
+  externalRefs      SupplierExternalReference[]
+  metrics           SupplierMetric?
+  planningProfiles  ItemPlanningProfile[]
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+model SupplierExternalReference {
+  id             String   @id @default(uuid())
+  supplierId     String
+  supplier       Supplier @relation(fields: [supplierId], references: [id])
+  sourceSystem   String
+  sourceRecordId String
+  createdAt      DateTime @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+model PurchaseDocument {
+  id                     String                 @id @default(uuid())
+  documentNumber         String
+  externalDocumentNumber String?
+  documentType           PurchaseDocumentType
+  status                 PurchaseDocumentStatus @default(DRAFT)
+  supplierId             String?
+  supplier               Supplier?              @relation(fields: [supplierId], references: [id])
+  branchId               String?
+  branch                 Branch?                @relation(fields: [branchId], references: [id])
+  warehouseId            String?
+  warehouse              Warehouse?             @relation(fields: [warehouseId], references: [id])
+  documentDate           DateTime
+  expectedDeliveryDate   DateTime?
+  currency               String                 @default("USD")
+  exchangeRate           Decimal                @default(1) @db.Decimal(12, 6)
+  subtotal               Decimal                @default(0) @db.Decimal(14, 2)
+  taxTotal               Decimal                @default(0) @db.Decimal(14, 2)
+  grandTotal             Decimal                @default(0) @db.Decimal(14, 2)
+  isCancelled            Boolean                @default(false)
+
+  sourceSystem   String?
+  sourceRecordId String?
+  externalId     String?
+  syncedAt       DateTime?
+  recordVersion  String?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  syncError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines         PurchaseDocumentLine[]
+  goodsReceipts GoodsReceipt[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([documentNumber])
+  @@index([supplierId])
+}
+
+model PurchaseDocumentLine {
+  id                   String            @id @default(uuid())
+  purchaseDocumentId   String
+  purchaseDocument     PurchaseDocument  @relation(fields: [purchaseDocumentId], references: [id])
+  lineNumber           Int
+  itemType             ItemType          @default(UNKNOWN)
+  partId               String?
+  part                 Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId   String?
+  lubricantProduct     LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  unresolvedItemCode   String?
+  orderedQuantity      Decimal           @db.Decimal(12, 3)
+  receivedQuantity     Decimal           @default(0) @db.Decimal(12, 3)
+  unitCost             Decimal           @db.Decimal(14, 4)
+  currency             String            @default("USD")
+  taxAmount            Decimal           @default(0) @db.Decimal(14, 2)
+  discountAmount       Decimal           @default(0) @db.Decimal(14, 2)
+  expectedDeliveryDate DateTime?
+  actualReceiptDate    DateTime?
+  supplierItemCode     String?
+
+  sourceSystem   String?
+  sourceRecordId String?
+  checksum       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  goodsReceiptLines GoodsReceiptLine[]
+
+  @@unique([purchaseDocumentId, lineNumber])
+  @@index([partId])
+  @@index([lubricantProductId])
+}
+
+model GoodsReceipt {
+  id                 String           @id @default(uuid())
+  purchaseDocumentId String
+  purchaseDocument   PurchaseDocument @relation(fields: [purchaseDocumentId], references: [id])
+  receiptNumber      String
+  warehouseId        String
+  warehouse          Warehouse        @relation(fields: [warehouseId], references: [id])
+  receivedAt         DateTime
+  isCancelled        Boolean          @default(false)
+
+  sourceSystem   String?
+  sourceRecordId String?
+  checksum       String?
+
+  createdAt DateTime @default(now())
+
+  lines GoodsReceiptLine[]
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+model GoodsReceiptLine {
+  id                     String                @id @default(uuid())
+  goodsReceiptId         String
+  goodsReceipt           GoodsReceipt          @relation(fields: [goodsReceiptId], references: [id])
+  purchaseDocumentLineId String?
+  purchaseDocumentLine   PurchaseDocumentLine? @relation(fields: [purchaseDocumentLineId], references: [id])
+  partId                 String?
+  part                   Part?                 @relation(fields: [partId], references: [id])
+  lubricantProductId     String?
+  lubricantProduct       LubricantProduct?     @relation(fields: [lubricantProductId], references: [id])
+  quantity               Decimal               @db.Decimal(12, 3)
+  unitCost               Decimal               @db.Decimal(14, 4)
+  batchNumber            String?
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// 2.6 Inventory model — movement-based ledger, never a single mutable quantity.
+// See docs/architecture/inventory-ledger.md for the full rationale.
+// ---------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  OPENING_BALANCE
+  PURCHASE_RECEIPT
+  SALE_ISSUE
+  GARAGE_ISSUE
+  CUSTOMER_RETURN
+  SUPPLIER_RETURN
+  TRANSFER_OUT
+  TRANSFER_IN
+  RESERVATION
+  RESERVATION_RELEASE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  DAMAGE
+  QUARANTINE
+  WARRANTY_ISSUE
+  WARRANTY_RETURN
+  STOCK_COUNT_CORRECTION
+}
+
+enum MovementDirection {
+  IN
+  OUT
+}
+
+model InventoryMovement {
+  id                 String                @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?                 @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct?     @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse             @relation(fields: [warehouseId], references: [id])
+  quantity           Decimal               @db.Decimal(14, 3) // always positive; `direction` carries the sign
+  direction          MovementDirection
+  movementType       InventoryMovementType
+  referenceType      String? // e.g. "SalesDocumentLine", "PurchaseDocumentLine", "GoodsReceiptLine", "StockTransfer"
+  referenceId        String?
+  sourceSystem       String?
+  sourceRecordId     String?
+  occurredAt         DateTime
+  importedAt         DateTime              @default(now())
+  unitCost           Decimal?              @db.Decimal(14, 4)
+  batchNumber        String?
+  serialNumber       String?
+  reason             String?
+  createdByActor     String? // no full user/employee system yet — the source actor string is preserved as-is
+  correlationId      String?
+  checksum           String?
+
+  createdAt DateTime @default(now())
+
+  externalRefs InventoryExternalReference[]
+
+  @@unique([sourceSystem, sourceRecordId])
+  @@index([partId, warehouseId, occurredAt])
+  @@index([lubricantProductId, warehouseId, occurredAt])
+  @@index([warehouseId, movementType])
+  @@index([correlationId])
+}
+
+// Transactionally-maintained projection, not recomputed on every read — see
+// docs/architecture/inventory-ledger.md for the invariant this must uphold:
+// available = onHand - reserved - quarantined - damaged (incoming/inTransit
+// are informational only and deliberately excluded from `available`).
+model InventoryBalance {
+  id                 String            @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse         @relation(fields: [warehouseId], references: [id])
+  // Non-null surrogate of (partId | lubricantProductId) — see
+  // src/inventory/item-key.ts for why the raw nullable pair can't be the
+  // unique key under Postgres NULL-distinct semantics.
+  itemKey            String
+
+  onHand      Decimal @default(0) @db.Decimal(14, 3)
+  reserved    Decimal @default(0) @db.Decimal(14, 3)
+  incoming    Decimal @default(0) @db.Decimal(14, 3)
+  inTransit   Decimal @default(0) @db.Decimal(14, 3)
+  damaged     Decimal @default(0) @db.Decimal(14, 3)
+  quarantined Decimal @default(0) @db.Decimal(14, 3)
+
+  // Data-quality flag: set when a source import would otherwise have driven
+  // onHand negative. The raw (negative) source value is preserved elsewhere
+  // (DataQualityIssue), never silently clamped to zero here without a flag.
+  hasNegativeStockIssue Boolean @default(false)
+
+  lastMovementAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([itemKey, warehouseId])
+  @@index([warehouseId])
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  CONSUMED
+  EXPIRED
+}
+
+model StockReservation {
+  id                 String            @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse         @relation(fields: [warehouseId], references: [id])
+  quantity           Decimal           @db.Decimal(14, 3)
+  referenceType      String? // e.g. "SalesDocument"
+  referenceId        String?
+  status             ReservationStatus @default(ACTIVE)
+  expiresAt          DateTime?
+  createdAt          DateTime          @default(now())
+  releasedAt         DateTime?
+
+  @@index([warehouseId, status])
+  @@index([partId, status])
+  @@index([lubricantProductId, status])
+}
+
+enum StockTransferStatus {
+  DRAFT
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+model StockTransfer {
+  id                     String              @id @default(uuid())
+  transferNumber         String              @unique
+  sourceWarehouseId      String
+  sourceWarehouse        Warehouse           @relation("TransferSource", fields: [sourceWarehouseId], references: [id])
+  destinationWarehouseId String
+  destinationWarehouse   Warehouse           @relation("TransferDestination", fields: [destinationWarehouseId], references: [id])
+  status                 StockTransferStatus @default(DRAFT)
+  requestedAt            DateTime            @default(now())
+  approvedAt             DateTime?
+  receivedAt             DateTime?
+  reason                 String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines StockTransferLine[]
+}
+
+model StockTransferLine {
+  id                 String            @id @default(uuid())
+  stockTransferId    String
+  stockTransfer      StockTransfer     @relation(fields: [stockTransferId], references: [id])
+  itemType           ItemType
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  quantity           Decimal           @db.Decimal(14, 3)
+}
+
+enum AdjustmentDirection {
+  IN
+  OUT
+}
+
+model InventoryAdjustment {
+  id                 String              @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?               @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct?   @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id])
+  quantity           Decimal             @db.Decimal(14, 3)
+  direction          AdjustmentDirection
+  reason             String
+  requestedById      String?
+  approvedById       String?
+  movementId         String? // the InventoryMovement this adjustment produced
+  createdAt          DateTime            @default(now())
+
+  @@index([warehouseId])
+}
+
+model InventoryExternalReference {
+  id             String            @id @default(uuid())
+  movementId     String
+  movement       InventoryMovement @relation(fields: [movementId], references: [id])
+  sourceSystem   String
+  sourceRecordId String
+  createdAt      DateTime          @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+// Periodic point-in-time snapshot for trend history — distinct from the live
+// InventoryBalance projection, which always reflects the current ledger state.
+model StockSnapshot {
+  id                 String            @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse         @relation(fields: [warehouseId], references: [id])
+  itemKey            String // see src/inventory/item-key.ts
+  snapshotDate       DateTime
+  onHand             Decimal           @db.Decimal(14, 3)
+  reserved           Decimal           @db.Decimal(14, 3)
+  available          Decimal           @db.Decimal(14, 3)
+  createdAt          DateTime          @default(now())
+
+  @@unique([itemKey, warehouseId, snapshotDate])
+}
+
+// ---------------------------------------------------------------------------
+// 3. Application-log ingestion
+// ---------------------------------------------------------------------------
+
+enum AppEventType {
+  USER_LOGIN
+  USER_LOGOUT
+  SEARCH
+  PRODUCT_VIEW
+  PRICE_CHECK
+  STOCK_CHECK
+  VIN_LOOKUP
+  CUSTOMER_LOOKUP
+  QUOTE_CREATED
+  QUOTE_ABANDONED
+  ORDER_CREATED
+  ORDER_FAILED
+  PAYMENT_FAILED
+  API_ERROR
+  SYNC_ERROR
+  OUT_OF_STOCK_VIEW
+  ZERO_RESULT_SEARCH
+  ALTERNATIVE_SELECTED
+  PERMISSION_DENIED
+}
+
+// A single, discriminated event table (eventType + metadata JSON) rather than
+// one table per event kind (AppEvent/SearchEvent/ProductInteractionEvent/
+// TransactionFailureEvent) — see docs/architecture/decision-log.md. All event
+// kinds share the same shape; splitting them would just be four copies of the
+// same columns with different WHERE clauses.
+model AppEvent {
+  id                 String            @id @default(uuid())
+  sourceApplication  String
+  sourceEventId      String
+  eventType          AppEventType
+  occurredAt         DateTime
+  userExternalId     String?
+  customerExternalId String?
+  branchCode         String?
+  warehouseCode      String?
+  searchQuery        String?
+  itemCode           String?
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  vin                String?
+  vehicleId          String?
+  vehicle            Vehicle?          @relation(fields: [vehicleId], references: [id])
+  sessionId          String?
+  correlationId      String?
+  endpoint           String?
+  durationMs         Int?
+  statusCode         Int?
+  errorCode          String?
+  errorMessage       String?
+  metadata           Json?
+  checksum           String
+
+  importedAt DateTime @default(now())
+
+  lostSaleEvidence LostSaleEvidence[]
+
+  @@unique([sourceApplication, sourceEventId])
+  @@index([eventType, occurredAt])
+  @@index([sessionId])
+  @@index([itemCode])
+  @@index([partId])
+  @@index([lubricantProductId])
+}
+
+// ---------------------------------------------------------------------------
+// 4. Lost-sales detection
+// ---------------------------------------------------------------------------
+
+enum LostSaleReason {
+  ZERO_RESULT_SEARCH
+  OUT_OF_STOCK_VIEW
+  INSUFFICIENT_STOCK_CHECK
+  QUOTE_ABANDONED
+  ORDER_FAILED_STOCK
+  MANUAL_REPORT
+  REPEATED_SEARCH_NO_SALE
+}
+
+enum LostSaleStatus {
+  OPEN
+  CONFIRMED
+  DISMISSED
+  CONVERTED
+  EXPIRED
+}
+
+// `dedupeKey` is a deterministic hash of (resolved item or raw query, session
+// or customer+branch, time bucket) — creation goes through an upsert on this
+// key, the same idempotency idiom Phase 1 uses for PartMatchCandidate, so
+// repeated log events in one session can never create duplicate candidates.
+model LostSaleCandidate {
+  id                 String                   @id @default(uuid())
+  reason             LostSaleReason
+  rawQuery           String?
+  partId             String?
+  part               Part?                    @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct?        @relation(fields: [lubricantProductId], references: [id])
+  customerId         String?
+  customer           Customer?                @relation(fields: [customerId], references: [id])
+  vehicleId          String?
+  vehicle            Vehicle?                 @relation(fields: [vehicleId], references: [id])
+  branchId           String?
+  branch             Branch?                  @relation(fields: [branchId], references: [id])
+  warehouseId        String?
+  warehouse          Warehouse?               @relation(fields: [warehouseId], references: [id])
+  requestedQuantity  Decimal?                 @db.Decimal(12, 3)
+  estimatedValue     Decimal?                 @db.Decimal(14, 2)
+  confidence         RecommendationConfidence @default(MEDIUM)
+  status             LostSaleStatus           @default(OPEN)
+  dedupeKey          String                   @unique
+  createdAt          DateTime                 @default(now())
+  resolvedAt         DateTime?
+  resolvedById       String?
+  resolutionReason   String?
+
+  evidence LostSaleEvidence[]
+
+  @@index([status])
+  @@index([partId])
+  @@index([lubricantProductId])
+}
+
+model LostSaleEvidence {
+  id                  String            @id @default(uuid())
+  lostSaleCandidateId String
+  lostSaleCandidate   LostSaleCandidate @relation(fields: [lostSaleCandidateId], references: [id])
+  appEventId          String
+  appEvent            AppEvent          @relation(fields: [appEventId], references: [id])
+  createdAt           DateTime          @default(now())
+
+  @@unique([lostSaleCandidateId, appEventId])
+}
+
+// ---------------------------------------------------------------------------
+// 6. Inventory classification & analytics (deterministic, recomputed by a
+// batch service call — not derived ad hoc per request).
+// ---------------------------------------------------------------------------
+
+enum AbcClass {
+  A
+  B
+  C
+}
+
+enum XyzClass {
+  X
+  Y
+  Z
+}
+
+enum MovementClass {
+  FAST_MOVING
+  MEDIUM_MOVING
+  SLOW_MOVING
+  NON_MOVING
+  DEAD_STOCK
+  NEW_ITEM
+  INSUFFICIENT_HISTORY
+}
+
+enum CriticalityLevel {
+  CRITICAL
+  IMPORTANT
+  NORMAL
+  LOW
+}
+
+// One row per (item, warehouse) plus one org-wide rollup row per item where
+// warehouseId is null. Recomputed wholesale by InventoryAnalyticsService, not
+// updated incrementally per movement.
+model InventoryItemMetric {
+  id                 String            @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String?
+  warehouse          Warehouse?        @relation(fields: [warehouseId], references: [id])
+  // Non-null surrogates — see src/inventory/item-key.ts. warehouseKey also
+  // stands in for warehouseId being legitimately null (the org-wide rollup row).
+  itemKey            String
+  warehouseKey       String
+
+  qtySold7d              Decimal  @default(0) @db.Decimal(14, 3)
+  qtySold30d             Decimal  @default(0) @db.Decimal(14, 3)
+  qtySold60d             Decimal  @default(0) @db.Decimal(14, 3)
+  qtySold90d             Decimal  @default(0) @db.Decimal(14, 3)
+  avgDailyDemand         Decimal  @default(0) @db.Decimal(14, 4)
+  avgWeeklyDemand        Decimal  @default(0) @db.Decimal(14, 4)
+  demandStdDev           Decimal  @default(0) @db.Decimal(14, 4)
+  coefficientOfVariation Decimal? @db.Decimal(8, 4)
+  salesFrequencyDays     Decimal? @db.Decimal(8, 2)
+  daysSinceLastSale      Int?
+  salesTransactionCount  Int      @default(0)
+  garageQty              Decimal  @default(0) @db.Decimal(14, 3)
+  retailQty              Decimal  @default(0) @db.Decimal(14, 3)
+  wholesaleQty           Decimal  @default(0) @db.Decimal(14, 3)
+  availableStock         Decimal  @default(0) @db.Decimal(14, 3)
+  daysOfSupply           Decimal? @db.Decimal(10, 2)
+  stockOutRisk           String? // LOW | MEDIUM | HIGH
+  noMovementDays         Int?
+  stockAgeDays           Int?
+  grossMarginPct         Decimal? @db.Decimal(6, 2)
+  lostSaleCount          Int      @default(0)
+  lostSaleQuantity       Decimal  @default(0) @db.Decimal(14, 3)
+  searchCount            Int      @default(0)
+  outOfStockSearchCount  Int      @default(0)
+  incomingQuantity       Decimal  @default(0) @db.Decimal(14, 3)
+  openPurchaseQuantity   Decimal  @default(0) @db.Decimal(14, 3)
+
+  historyDays          Int
+  hasSufficientHistory Boolean @default(true)
+
+  abcClass             AbcClass?
+  abcConfidenceReduced Boolean          @default(false)
+  xyzClass             XyzClass?
+  movementClass        MovementClass    @default(INSUFFICIENT_HISTORY)
+  criticality          CriticalityLevel @default(NORMAL)
+  criticalityIsManual  Boolean          @default(false)
+
+  calculatedAt DateTime @default(now())
+
+  @@unique([itemKey, warehouseKey])
+  @@index([movementClass])
+  @@index([abcClass])
+}
+
+// ---------------------------------------------------------------------------
+// 7 & 8. Recommendation engines
+// ---------------------------------------------------------------------------
+
+enum PurchaseRecommendationAction {
+  BUY_NOW
+  BUY_SOON
+  MONITOR
+  TRANSFER
+  DO_NOT_BUY
+  PURCHASE_ON_CONFIRMED_ORDER
+  CLEAR_EXISTING_STOCK
+  REVIEW_DATA
+}
+
+enum RecommendationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+  EXPIRED
+}
+
+// `evidence` always mirrors the structured object documented in
+// docs/architecture/purchase-recommendation-engine.md — every number the
+// action was derived from, preserved for audit, even when the displayed
+// suggestedQuantity is rounded for operational use.
+model PurchaseRecommendation {
+  id                 String                       @id @default(uuid())
+  itemType           ItemType
+  partId             String?
+  part               Part?                        @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct?            @relation(fields: [lubricantProductId], references: [id])
+  warehouseId        String?
+  warehouse          Warehouse?                   @relation(fields: [warehouseId], references: [id])
+  action             PurchaseRecommendationAction
+  suggestedQuantity  Decimal                      @db.Decimal(14, 3)
+  confidence         RecommendationConfidence
+  evidence           Json
+  warnings           String[]                     @default([])
+  status             RecommendationStatus         @default(PENDING)
+  decidedById        String?
+  decidedAt          DateTime?
+  decisionNote       String?
+  generatedAt        DateTime                     @default(now())
+
+  @@index([action, status])
+  @@index([partId])
+  @@index([lubricantProductId])
+  @@index([warehouseId])
+}
+
+model TransferRecommendation {
+  id                     String               @id @default(uuid())
+  itemType               ItemType
+  partId                 String?
+  part                   Part?                @relation(fields: [partId], references: [id])
+  lubricantProductId     String?
+  lubricantProduct       LubricantProduct?    @relation(fields: [lubricantProductId], references: [id])
+  sourceWarehouseId      String
+  sourceWarehouse        Warehouse            @relation("TransferRecSource", fields: [sourceWarehouseId], references: [id])
+  destinationWarehouseId String
+  destinationWarehouse   Warehouse            @relation("TransferRecDestination", fields: [destinationWarehouseId], references: [id])
+  suggestedQuantity      Decimal              @db.Decimal(14, 3)
+  reason                 String
+  evidence               Json
+  status                 RecommendationStatus @default(PENDING)
+  decidedById            String?
+  decidedAt              DateTime?
+  decisionNote           String?
+  generatedAt            DateTime             @default(now())
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// 9. Supplier performance foundation
+// ---------------------------------------------------------------------------
+
+model SupplierMetric {
+  id                   String                   @id @default(uuid())
+  supplierId           String                   @unique
+  supplier             Supplier                 @relation(fields: [supplierId], references: [id])
+  avgLeadTimeDays      Decimal?                 @db.Decimal(8, 2)
+  leadTimeVariance     Decimal?                 @db.Decimal(8, 2)
+  onTimeDeliveryPct    Decimal?                 @db.Decimal(6, 2)
+  fillRatePct          Decimal?                 @db.Decimal(6, 2)
+  priceVariancePct     Decimal?                 @db.Decimal(6, 2)
+  quantityAccuracyPct  Decimal?                 @db.Decimal(6, 2)
+  receiptCompletionPct Decimal?                 @db.Decimal(6, 2)
+  returnCount          Int?
+  activePurchaseOrders Int                      @default(0)
+  latePurchaseOrders   Int                      @default(0)
+  dataSufficiency      RecommendationConfidence @default(INSUFFICIENT_DATA)
+  calculatedAt         DateTime                 @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// 12. Audit
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id                String   @id @default(uuid())
+  action            String
+  actorId           String?
+  actorRole         String?
+  entityType        String
+  entityId          String
+  beforeState       Json?
+  afterState        Json?
+  branchId          String?
+  sourceApplication String?
+  correlationId     String?
+  occurredAt        DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([occurredAt])
+}
+
+// ---------------------------------------------------------------------------
+// 13. Data quality
+// ---------------------------------------------------------------------------
+
+enum DataQualitySeverity {
+  FATAL
+  RECOVERABLE
+  WARNING
+  MANUAL_REVIEW
+}
+
+model DataQualityIssue {
+  id           String              @id @default(uuid())
+  checkName    String
+  severity     DataQualitySeverity
+  entityType   String
+  entityId     String?
+  message      String
+  context      Json?
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime            @default(now())
+
+  @@index([checkName, severity])
+  @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// 7. Purchase-recommendation engine inputs
+// ---------------------------------------------------------------------------
+
+// Planning parameters live here rather than on Part/LubricantProduct — they're
+// operational tuning knobs (safety stock, MOQ, coverage targets), not catalog
+// attributes, and keeping them separate means the recommendation engine's
+// inputs are all in one place. Criticality is manually set here in Phase 2
+// (see docs/architecture/purchase-recommendation-engine.md); later phases may
+// compute it instead.
+model ItemPlanningProfile {
+  id                   String            @id @default(uuid())
+  itemKey              String            @unique
+  itemType             ItemType
+  partId               String?
+  part                 Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId   String?
+  lubricantProduct     LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  safetyStock          Decimal           @default(0) @db.Decimal(14, 3)
+  minimumOrderQuantity Decimal?          @db.Decimal(14, 3)
+  packageQuantity      Decimal?          @db.Decimal(14, 3)
+  targetCoverageDays   Int               @default(30)
+  maxCoverageDays      Int               @default(90)
+  defaultSupplierId    String?
+  defaultSupplier      Supplier?         @relation(fields: [defaultSupplierId], references: [id])
+  criticality          CriticalityLevel  @default(NORMAL)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+// =============================================================================
+// PHASE 3 — Garage Operations, Service Intelligence and Vehicle Lifecycle
+// See docs/architecture/garage-architecture.md for the domain design and
+// docs/architecture/decision-log-phase3.md for why each simplification was made.
+//
+// Core rule: garage operations never touch InventoryBalance directly — every
+// stock movement goes through Phase 2's InventoryLedgerService/
+// ReservationsService. No new inventory tables are introduced here.
+// =============================================================================
+
+enum ChecklistCategory {
+  RECEPTION
+  JOB
+  QUALITY
+}
+
+enum ChecklistItemStatus {
+  PASS
+  FAIL
+  NA
+}
+
+enum ReceptionFuelLevel {
+  EMPTY
+  QUARTER
+  HALF
+  THREE_QUARTER
+  FULL
+}
+
+enum GarageJobStatus {
+  DRAFT
+  CHECKED_IN
+  WAITING_INSPECTION
+  INSPECTION_IN_PROGRESS
+  WAITING_ESTIMATE
+  WAITING_CUSTOMER_APPROVAL
+  PARTIALLY_APPROVED
+  APPROVED
+  WAITING_PARTS
+  READY_TO_START
+  IN_PROGRESS
+  PAUSED
+  WAITING_ADDITIONAL_APPROVAL
+  QUALITY_CONTROL
+  ROAD_TEST
+  READY_FOR_COLLECTION
+  COMPLETED
+  CANCELLED
+  WARRANTY_RETURN
+}
+
+enum GarageJobLineType {
+  LABOUR
+  PART
+  LUBRICANT
+  MISCELLANEOUS
+  OUTSOURCED
+}
+
+enum InspectionFinding {
+  PASS
+  WARNING
+  FAIL
+  NOT_INSPECTED
+  UNKNOWN
+}
+
+enum InspectionSeverityLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DiagnosticCodeSource {
+  MANUFACTURER
+  GENERIC_OBD
+  MANUAL
+}
+
+enum CauseConfidence {
+  SUSPECTED
+  CONFIRMED
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  PARTIALLY_APPROVED
+  APPROVED
+  REJECTED
+  REVISED
+  EXPIRED
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TechnicianSpecialization {
+  BMW
+  MERCEDES
+  LAND_ROVER
+  VAG
+  ELECTRICAL
+  HYBRID
+  EV
+  AUTOMATIC_TRANSMISSION
+  DIAGNOSTICS
+  GENERAL
+}
+
+enum QualityResult {
+  PASS
+  FAIL
+  CONDITIONAL_PASS
+}
+
+enum NotificationEventType {
+  APPROVAL_REQUIRED
+  PARTS_ARRIVED
+  VEHICLE_COMPLETED
+  TECHNICIAN_ASSIGNED
+  QC_FAILED
+  ROAD_TEST_REQUIRED
+  VEHICLE_READY
+  JOB_OVERDUE
+}
+
+enum RepeatRepairStatus {
+  POSSIBLE
+  CONFIRMED
+  WARRANTY_CANDIDATE
+  DISMISSED
+}
+
+enum WorkshopRequestType {
+  EMERGENCY
+  INTER_WAREHOUSE
+  BRANCH
+  SUPPLIER
+  URGENT_PROCUREMENT
+}
+
+enum WorkshopRequestStatus {
+  OPEN
+  LINKED_TO_TRANSFER
+  LINKED_TO_PURCHASE
+  FULFILLED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// Generic checklist engine — reused by Reception, Job, and Quality checklists
+// instead of three near-identical schemas. See decision-log-phase3.md.
+// ---------------------------------------------------------------------------
+
+model ChecklistTemplate {
+  id       String            @id @default(uuid())
+  name     String
+  category ChecklistCategory
+  isActive Boolean           @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     ChecklistTemplateItem[]
+  responses ChecklistResponse[]
+}
+
+model ChecklistTemplateItem {
+  id            String            @id @default(uuid())
+  templateId    String
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id])
+  label         String
+  sortOrder     Int               @default(0)
+  requiresPhoto Boolean           @default(false)
+  requiresNote  Boolean           @default(false)
+
+  responseItems ChecklistResponseItem[]
+
+  @@index([templateId])
+}
+
+// entityType/entityId are a loose reference (e.g. "VehicleReception"/id,
+// "GarageJob"/id, "QualityInspection"/id) — same pattern as Phase 2's
+// StockReservation.referenceType/referenceId, deliberately not a hard FK so
+// one checklist engine can attach to any entity.
+model ChecklistResponse {
+  id            String            @id @default(uuid())
+  templateId    String
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id])
+  entityType    String
+  entityId      String
+  completedById String?
+  completedAt   DateTime          @default(now())
+
+  items ChecklistResponseItem[]
+
+  @@index([entityType, entityId])
+}
+
+model ChecklistResponseItem {
+  id             String                @id @default(uuid())
+  responseId     String
+  response       ChecklistResponse     @relation(fields: [responseId], references: [id])
+  templateItemId String
+  templateItem   ChecklistTemplateItem @relation(fields: [templateItemId], references: [id])
+  status         ChecklistItemStatus
+  note           String?
+  photoUrl       String?
+
+  @@unique([responseId, templateItemId])
+}
+
+// ---------------------------------------------------------------------------
+// 1. Vehicle check-in
+// ---------------------------------------------------------------------------
+
+model VehicleReception {
+  id                   String              @id @default(uuid())
+  vehicleId            String
+  vehicle              Vehicle             @relation(fields: [vehicleId], references: [id])
+  customerId           String?
+  customer             Customer?           @relation(fields: [customerId], references: [id])
+  branchId             String
+  branch               Branch              @relation(fields: [branchId], references: [id])
+  receivedById         String?
+  driverName           String?
+  mileage              Int
+  fuelLevel            ReceptionFuelLevel?
+  batteryVoltage       Decimal?            @db.Decimal(5, 2)
+  arrivalAt            DateTime            @default(now())
+  expectedCompletionAt DateTime?
+  receptionNotes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conditions  VehicleCondition[]
+  complaints  CustomerComplaint[]
+  photos      VehiclePhoto[]
+  accessories VehicleAccessory[]
+  jobs        GarageJob[]
+
+  @@index([vehicleId])
+  @@index([branchId, arrivalAt])
+}
+
+model VehicleCondition {
+  id          String                  @id @default(uuid())
+  receptionId String
+  reception   VehicleReception        @relation(fields: [receptionId], references: [id])
+  area        String // e.g. "TYRE_FRONT_LEFT", "DASHBOARD_WARNING", "BODY_PANEL"
+  condition   String
+  severity    InspectionSeverityLevel @default(NONE)
+  note        String?
+  createdAt   DateTime                @default(now())
+
+  @@index([receptionId])
+}
+
+// Linked loosely to either a reception or a job (or both) since a complaint
+// can be raised at check-in or added mid-job.
+model CustomerComplaint {
+  id          String            @id @default(uuid())
+  receptionId String?
+  reception   VehicleReception? @relation(fields: [receptionId], references: [id])
+  vehicleId   String
+  vehicle     Vehicle           @relation(fields: [vehicleId], references: [id])
+  jobId       String?
+  job         GarageJob?        @relation(fields: [jobId], references: [id])
+  description String
+  reportedAt  DateTime          @default(now())
+
+  @@index([vehicleId])
+  @@index([jobId])
+}
+
+model VehiclePhoto {
+  id          String            @id @default(uuid())
+  receptionId String?
+  reception   VehicleReception? @relation(fields: [receptionId], references: [id])
+  jobId       String?
+  job         GarageJob?        @relation(fields: [jobId], references: [id])
+  url         String
+  caption     String?
+  takenAt     DateTime          @default(now())
+
+  @@index([receptionId])
+  @@index([jobId])
+}
+
+model VehicleAccessory {
+  id          String           @id @default(uuid())
+  receptionId String
+  reception   VehicleReception @relation(fields: [receptionId], references: [id])
+  description String
+  returnedAt  DateTime?
+
+  @@index([receptionId])
+}
+
+// ---------------------------------------------------------------------------
+// 2–3. Job card engine and workflow
+// ---------------------------------------------------------------------------
+
+model GarageJob {
+  id               String            @id @default(uuid())
+  jobNumber        String            @unique
+  vehicleId        String
+  vehicle          Vehicle           @relation(fields: [vehicleId], references: [id])
+  customerId       String?
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  receptionId      String?
+  reception        VehicleReception? @relation(fields: [receptionId], references: [id])
+  branchId         String
+  branch           Branch            @relation(fields: [branchId], references: [id])
+  warehouseId      String?
+  warehouse        Warehouse?        @relation(fields: [warehouseId], references: [id])
+  supervisorId     String?
+  status           GarageJobStatus   @default(DRAFT)
+  isWarranty       Boolean           @default(false)
+  mileageAtCheckIn Int?
+  openedAt         DateTime          @default(now())
+  closedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines                     GarageJobLine[]
+  statusHistory             JobStatusHistory[]
+  assignments               JobAssignment[]
+  timeline                  JobTimeline[]
+  documents                 JobDocument[]
+  attachments               JobAttachment[]
+  complaints                CustomerComplaint[]
+  photos                    VehiclePhoto[]
+  diagnosticSessions        DiagnosticSession[]
+  inspectionResults         InspectionResult[]
+  estimates                 Estimate[]
+  timeLogs                  TechnicianTimeLog[]
+  qualityInspections        QualityInspection[]
+  roadTests                 RoadTest[]
+  qualityApprovals          QualityApproval[]
+  repeatRepairFlags         RepeatRepairFlag[]
+  notifications             NotificationEvent[]
+  workshopInventoryRequests WorkshopInventoryRequest[]
+  salesDocuments            SalesDocument[]
+
+  @@index([vehicleId])
+  @@index([branchId, status])
+  @@index([status])
+}
+
+model GarageJobLine {
+  id                 String            @id @default(uuid())
+  jobId              String
+  job                GarageJob         @relation(fields: [jobId], references: [id])
+  lineType           GarageJobLineType
+  description        String
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  labourOperationId  String?
+  labourOperation    LabourOperation?  @relation(fields: [labourOperationId], references: [id])
+  quantity           Decimal           @default(1) @db.Decimal(12, 3)
+  unitPrice          Decimal           @default(0) @db.Decimal(14, 4)
+  unitCost           Decimal?          @db.Decimal(14, 4)
+  lineTotal          Decimal           @default(0) @db.Decimal(14, 2)
+  // Loose references (Phase 2's StockReservation/InventoryMovement are the
+  // real source of truth) — see garage-architecture.md §"Core architectural rule".
+  reservationId      String?
+  estimateLineId     String?
+  estimateLine       EstimateLine?     @relation(fields: [estimateLineId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+}
+
+model JobStatusHistory {
+  id             String           @id @default(uuid())
+  jobId          String
+  job            GarageJob        @relation(fields: [jobId], references: [id])
+  previousStatus GarageJobStatus?
+  newStatus      GarageJobStatus
+  changedById    String?
+  reason         String?
+  correlationId  String?
+  changedAt      DateTime         @default(now())
+
+  @@index([jobId, changedAt])
+}
+
+model JobAssignment {
+  id           String     @id @default(uuid())
+  jobId        String
+  job          GarageJob  @relation(fields: [jobId], references: [id])
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  role         String     @default("TECHNICIAN") // TECHNICIAN | SUPERVISOR
+  assignedAt   DateTime   @default(now())
+  unassignedAt DateTime?
+  assignedById String?
+
+  @@index([jobId])
+  @@index([technicianId])
+}
+
+// Broader append-only event log than JobStatusHistory — every notable event
+// in a job's life, not just status transitions. Feeds the vehicle timeline
+// (§16) directly, never overwritten.
+model JobTimeline {
+  id          String    @id @default(uuid())
+  jobId       String
+  job         GarageJob @relation(fields: [jobId], references: [id])
+  eventType   String
+  description String
+  metadata    Json?
+  actorId     String?
+  occurredAt  DateTime  @default(now())
+
+  @@index([jobId, occurredAt])
+}
+
+model JobDocument {
+  id          String    @id @default(uuid())
+  jobId       String
+  job         GarageJob @relation(fields: [jobId], references: [id])
+  docType     String // "ESTIMATE" | "INVOICE" | "INSPECTION_REPORT" | "QC_REPORT"
+  referenceId String?
+  url         String?
+  createdAt   DateTime  @default(now())
+
+  @@index([jobId])
+}
+
+model JobAttachment {
+  id        String    @id @default(uuid())
+  jobId     String
+  job       GarageJob @relation(fields: [jobId], references: [id])
+  kind      String // "VIDEO" | "VOICE_NOTE" | "SCAN_REPORT" | "OTHER"
+  url       String
+  caption   String?
+  createdAt DateTime  @default(now())
+
+  @@index([jobId])
+}
+
+// ---------------------------------------------------------------------------
+// 4. Vehicle inspection
+// ---------------------------------------------------------------------------
+
+model InspectionTemplate {
+  id       String  @id @default(uuid())
+  name     String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  sections InspectionSection[]
+}
+
+model InspectionSection {
+  id         String             @id @default(uuid())
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id])
+  name       String
+  sortOrder  Int                @default(0)
+
+  items InspectionItem[]
+
+  @@index([templateId])
+}
+
+model InspectionItem {
+  id        String            @id @default(uuid())
+  sectionId String
+  section   InspectionSection @relation(fields: [sectionId], references: [id])
+  label     String
+  sortOrder Int               @default(0)
+
+  results InspectionResult[]
+
+  @@index([sectionId])
+}
+
+// Severity and recommendation live as fields here, not separate
+// InspectionSeverity/InspectionRecommendation tables — both are 1:1
+// attributes of a single inspection result. See decision-log-phase3.md.
+model InspectionResult {
+  id                   String                  @id @default(uuid())
+  jobId                String
+  job                  GarageJob               @relation(fields: [jobId], references: [id])
+  itemId               String
+  item                 InspectionItem          @relation(fields: [itemId], references: [id])
+  finding              InspectionFinding
+  severity             InspectionSeverityLevel @default(NONE)
+  recommendedAction    String?
+  estimatedLabourHours Decimal?                @db.Decimal(6, 2)
+  requiredPartId       String?
+  requiredPart         Part?                   @relation(fields: [requiredPartId], references: [id])
+  requiredLubricantId  String?
+  requiredLubricant    LubricantProduct?       @relation(fields: [requiredLubricantId], references: [id])
+  safetyWarning        Boolean                 @default(false)
+  inspectedById        String?
+  inspectedAt          DateTime                @default(now())
+  note                 String?
+
+  photos InspectionPhoto[]
+
+  @@unique([jobId, itemId])
+  @@index([jobId])
+}
+
+model InspectionPhoto {
+  id        String           @id @default(uuid())
+  resultId  String
+  result    InspectionResult @relation(fields: [resultId], references: [id])
+  url       String
+  createdAt DateTime         @default(now())
+
+  @@index([resultId])
+}
+
+// ---------------------------------------------------------------------------
+// 5. Diagnostics — structured storage only, no AI interpretation (Phase 5).
+// ---------------------------------------------------------------------------
+
+model DiagnosticSession {
+  id                  String    @id @default(uuid())
+  jobId               String
+  job                 GarageJob @relation(fields: [jobId], references: [id])
+  technicianId        String?
+  startedAt           DateTime  @default(now())
+  completedAt         DateTime?
+  // Simple structured list of steps performed — a full DiagnosticProcedure
+  // table would just be (session, stepNumber, description) with no other
+  // behavior; JSON is enough for "store what was done" at this phase.
+  proceduresPerformed Json?
+  notes               String?
+
+  codes       DiagnosticCode[]
+  symptoms    Symptom[]
+  attachments DiagnosticAttachment[]
+  causes      SuspectedCause[]
+
+  @@index([jobId])
+}
+
+model DiagnosticCode {
+  id          String               @id @default(uuid())
+  sessionId   String
+  session     DiagnosticSession    @relation(fields: [sessionId], references: [id])
+  code        String // e.g. "P0301"
+  source      DiagnosticCodeSource
+  description String?
+  freezeFrame Json?
+  recordedAt  DateTime             @default(now())
+
+  suspectedCauses SuspectedCause[]
+
+  @@index([sessionId])
+  @@index([code])
+}
+
+model Symptom {
+  id          String            @id @default(uuid())
+  sessionId   String
+  session     DiagnosticSession @relation(fields: [sessionId], references: [id])
+  description String
+  reportedBy  String            @default("TECHNICIAN") // TECHNICIAN | CUSTOMER
+  createdAt   DateTime          @default(now())
+
+  @@index([sessionId])
+}
+
+// `confidence` distinguishes suspected from confirmed rather than two
+// separate tables — a cause starts SUSPECTED and the same row transitions to
+// CONFIRMED (confirmedAt/confirmedById set), never duplicated.
+model SuspectedCause {
+  id               String            @id @default(uuid())
+  sessionId        String
+  session          DiagnosticSession @relation(fields: [sessionId], references: [id])
+  diagnosticCodeId String?
+  diagnosticCode   DiagnosticCode?   @relation(fields: [diagnosticCodeId], references: [id])
+  description      String
+  confidence       CauseConfidence   @default(SUSPECTED)
+  confirmedAt      DateTime?
+  confirmedById    String?
+
+  @@index([sessionId])
+}
+
+model DiagnosticAttachment {
+  id        String            @id @default(uuid())
+  sessionId String
+  session   DiagnosticSession @relation(fields: [sessionId], references: [id])
+  url       String
+  kind      String // "SCAN_REPORT" | "PHOTO" | "VIDEO"
+  createdAt DateTime          @default(now())
+
+  @@index([sessionId])
+}
+
+// ---------------------------------------------------------------------------
+// 6. Estimates and customer approval — the pre-sale workflow. The financial
+// record of a *completed* sale still reuses SalesDocument (see the
+// `garageJobId` field added to SalesDocument below) rather than duplicating
+// invoicing; Estimate exists because SalesDocument has no concept of
+// revisions or per-line approval, which this workflow genuinely needs.
+// ---------------------------------------------------------------------------
+
+model Estimate {
+  id             String         @id @default(uuid())
+  jobId          String
+  job            GarageJob      @relation(fields: [jobId], references: [id])
+  estimateNumber String         @unique
+  status         EstimateStatus @default(DRAFT)
+  version        Int            @default(1)
+  subtotal       Decimal        @default(0) @db.Decimal(14, 2)
+  discountTotal  Decimal        @default(0) @db.Decimal(14, 2)
+  taxTotal       Decimal        @default(0) @db.Decimal(14, 2)
+  grandTotal     Decimal        @default(0) @db.Decimal(14, 2)
+  sentAt         DateTime?
+  createdById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines            EstimateLine[]
+  revisions        EstimateRevision[]
+  approvalRequests ApprovalRequest[]
+
+  @@index([jobId])
+}
+
+model EstimateLine {
+  id                 String            @id @default(uuid())
+  estimateId         String
+  estimate           Estimate          @relation(fields: [estimateId], references: [id])
+  lineType           GarageJobLineType
+  description        String
+  partId             String?
+  part               Part?             @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct? @relation(fields: [lubricantProductId], references: [id])
+  quantity           Decimal           @default(1) @db.Decimal(12, 3)
+  unitPrice          Decimal           @default(0) @db.Decimal(14, 4)
+  discountAmount     Decimal           @default(0) @db.Decimal(14, 2)
+  taxAmount          Decimal           @default(0) @db.Decimal(14, 2)
+  lineTotal          Decimal           @default(0) @db.Decimal(14, 2)
+  approvalDecision   ApprovalDecision  @default(PENDING)
+
+  jobLines GarageJobLine[]
+
+  @@index([estimateId])
+}
+
+// Revision snapshots the whole line set as JSON rather than versioning every
+// line individually — an estimate revision is a whole-document event
+// (customer asked for changes), not a per-line audit trail.
+model EstimateRevision {
+  id          String   @id @default(uuid())
+  estimateId  String
+  estimate    Estimate @relation(fields: [estimateId], references: [id])
+  version     Int
+  snapshot    Json
+  reason      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([estimateId])
+}
+
+model ApprovalRequest {
+  id              String           @id @default(uuid())
+  estimateId      String
+  estimate        Estimate         @relation(fields: [estimateId], references: [id])
+  requestedAt     DateTime         @default(now())
+  respondedAt     DateTime?
+  decision        ApprovalDecision @default(PENDING)
+  respondedByName String? // customer name — digital signature placeholder
+  note            String?
+
+  history ApprovalHistory[]
+
+  @@index([estimateId])
+}
+
+model ApprovalHistory {
+  id                String           @id @default(uuid())
+  approvalRequestId String
+  approvalRequest   ApprovalRequest  @relation(fields: [approvalRequestId], references: [id])
+  decision          ApprovalDecision
+  note              String?
+  actorId           String?
+  occurredAt        DateTime         @default(now())
+
+  @@index([approvalRequestId])
+}
+
+// ---------------------------------------------------------------------------
+// 7–8. Labour engine and technician management
+// ---------------------------------------------------------------------------
+
+model LabourCategory {
+  id   String @id @default(uuid())
+  name String @unique
+
+  operations LabourOperation[]
+}
+
+model LabourOperation {
+  id            String          @id @default(uuid())
+  categoryId    String?
+  category      LabourCategory? @relation(fields: [categoryId], references: [id])
+  code          String          @unique
+  name          String
+  standardHours Decimal         @db.Decimal(6, 2)
+  isActive      Boolean         @default(true)
+
+  jobLines GarageJobLine[]
+  rates    LabourRate[]
+  timeLogs TechnicianTimeLog[]
+}
+
+model LabourRate {
+  id                String           @id @default(uuid())
+  labourOperationId String?
+  labourOperation   LabourOperation? @relation(fields: [labourOperationId], references: [id])
+  branchId          String?
+  branch            Branch?          @relation(fields: [branchId], references: [id])
+  hourlyRate        Decimal          @db.Decimal(12, 2)
+  effectiveFrom     DateTime         @default(now())
+  effectiveTo       DateTime?
+
+  @@index([labourOperationId, branchId])
+}
+
+// TechnicianProductivity is deliberately not a stored table — it's computed
+// on demand from TechnicianTimeLog by WorkshopAnalyticsService, the same way
+// Phase 2 chose *not* to store a redundant analytics table for everything.
+model TechnicianTimeLog {
+  id                String           @id @default(uuid())
+  jobId             String
+  job               GarageJob        @relation(fields: [jobId], references: [id])
+  technicianId      String
+  technician        Technician       @relation(fields: [technicianId], references: [id])
+  labourOperationId String?
+  labourOperation   LabourOperation? @relation(fields: [labourOperationId], references: [id])
+  startedAt         DateTime
+  pausedAt          DateTime?
+  resumedAt         DateTime?
+  endedAt           DateTime?
+  actualMinutes     Int?
+  isOvertime        Boolean          @default(false)
+  note              String?
+
+  @@index([jobId])
+  @@index([technicianId])
+}
+
+model Technician {
+  id           String   @id @default(uuid())
+  employeeCode String   @unique
+  name         String
+  branchId     String
+  branch       Branch   @relation(fields: [branchId], references: [id])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  skills         TechnicianSkill[]
+  certifications TechnicianCertification[]
+  availability   TechnicianAvailability[]
+  schedules      TechnicianSchedule[]
+  assignments    JobAssignment[]
+  timeLogs       TechnicianTimeLog[]
+}
+
+model TechnicianSkill {
+  id             String                   @id @default(uuid())
+  technicianId   String
+  technician     Technician               @relation(fields: [technicianId], references: [id])
+  specialization TechnicianSpecialization
+  proficiency    Int                      @default(1)
+
+  @@unique([technicianId, specialization])
+}
+
+model TechnicianCertification {
+  id           String     @id @default(uuid())
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  name         String
+  issuedBy     String?
+  issuedAt     DateTime?
+  expiresAt    DateTime?
+
+  @@index([technicianId])
+}
+
+model TechnicianAvailability {
+  id           String     @id @default(uuid())
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  date         DateTime
+  isAvailable  Boolean    @default(true)
+  reason       String?
+
+  @@unique([technicianId, date])
+}
+
+model TechnicianSchedule {
+  id           String     @id @default(uuid())
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  dayOfWeek    Int
+  startTime    String
+  endTime      String
+
+  @@index([technicianId])
+}
+
+// ---------------------------------------------------------------------------
+// 11. Workshop inventory requests — connects to the existing Phase 2
+// recommendation engines rather than reimplementing purchasing/transfer logic.
+// ---------------------------------------------------------------------------
+
+model WorkshopInventoryRequest {
+  id                       String                @id @default(uuid())
+  jobId                    String?
+  job                      GarageJob?            @relation(fields: [jobId], references: [id])
+  itemType                 ItemType
+  partId                   String?
+  part                     Part?                 @relation(fields: [partId], references: [id])
+  lubricantProductId       String?
+  lubricantProduct         LubricantProduct?     @relation(fields: [lubricantProductId], references: [id])
+  warehouseId              String
+  warehouse                Warehouse             @relation(fields: [warehouseId], references: [id])
+  quantity                 Decimal               @db.Decimal(14, 3)
+  requestType              WorkshopRequestType
+  status                   WorkshopRequestStatus @default(OPEN)
+  transferRecommendationId String?
+  purchaseRecommendationId String?
+  requestedById            String?
+  requestedAt              DateTime              @default(now())
+  resolvedAt               DateTime?
+
+  @@index([jobId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// 12. Quality control
+// ---------------------------------------------------------------------------
+
+model QualityInspection {
+  id          String        @id @default(uuid())
+  jobId       String
+  job         GarageJob     @relation(fields: [jobId], references: [id])
+  inspectorId String?
+  result      QualityResult @default(PASS)
+  notes       String?
+  inspectedAt DateTime      @default(now())
+
+  issues QualityIssue[]
+
+  @@index([jobId])
+}
+
+model QualityIssue {
+  id                  String            @id @default(uuid())
+  qualityInspectionId String
+  qualityInspection   QualityInspection @relation(fields: [qualityInspectionId], references: [id])
+  category            String // "LEAK" | "NOISE" | "WARNING_LIGHT" | "FLUID_LEVEL" | "OTHER"
+  description         String
+  resolvedAt          DateTime?
+
+  @@index([qualityInspectionId])
+}
+
+model RoadTest {
+  id          String        @id @default(uuid())
+  jobId       String
+  job         GarageJob     @relation(fields: [jobId], references: [id])
+  driverId    String?
+  distanceKm  Decimal?      @db.Decimal(6, 2)
+  result      QualityResult @default(PASS)
+  notes       String?
+  performedAt DateTime      @default(now())
+
+  @@index([jobId])
+}
+
+model QualityApproval {
+  id              String    @id @default(uuid())
+  jobId           String
+  job             GarageJob @relation(fields: [jobId], references: [id])
+  approvedById    String?
+  customerReadyAt DateTime  @default(now())
+  note            String?
+
+  @@index([jobId])
+}
+
+// ---------------------------------------------------------------------------
+// 14. Repeat repair detection — deterministic, no AI (Phase 5).
+// ---------------------------------------------------------------------------
+
+model RepeatRepairFlag {
+  id           String             @id @default(uuid())
+  vehicleId    String
+  vehicle      Vehicle            @relation(fields: [vehicleId], references: [id])
+  jobId        String
+  job          GarageJob          @relation(fields: [jobId], references: [id])
+  relatedJobId String?
+  matchReason  String // "SAME_COMPLAINT" | "SAME_DTC" | "SAME_PART" | "SAME_SYSTEM"
+  status       RepeatRepairStatus @default(POSSIBLE)
+  detectedAt   DateTime           @default(now())
+  resolvedById String?
+  resolvedAt   DateTime?
+  note         String?
+
+  @@unique([jobId, relatedJobId, matchReason])
+  @@index([vehicleId])
+  @@index([jobId])
+}
+
+// ---------------------------------------------------------------------------
+// 17. Workshop notifications
+// ---------------------------------------------------------------------------
+
+model NotificationEvent {
+  id            String                @id @default(uuid())
+  eventType     NotificationEventType
+  jobId         String?
+  job           GarageJob?            @relation(fields: [jobId], references: [id])
+  vehicleId     String?
+  vehicle       Vehicle?              @relation(fields: [vehicleId], references: [id])
+  recipientRole String?
+  recipientId   String?
+  message       String
+  isRead        Boolean               @default(false)
+  createdAt     DateTime              @default(now())
+  readAt        DateTime?
+
+  @@index([jobId])
+  @@index([isRead])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 — DGX AI Platform, Automotive Intelligence & Decision Engine
+//
+// DGX Spark is never the system of record: none of these models are written
+// to by the Python inference boundary (services/dgx-ai-platform) itself —
+// only by NestJS's AiGatewayService, after a real inference call returns.
+// See docs/architecture/dgx-platform.md and docs/architecture/ai-governance.md.
+// ---------------------------------------------------------------------------
+
+enum AiModelKind {
+  GENERATION
+  EMBEDDING
+}
+
+enum AiModelProvider {
+  OLLAMA
+}
+
+enum AiModelStatus {
+  ACTIVE
+  TESTING
+  DEPRECATED
+}
+
+// DGX Prototype 1.6 (AI Evaluation Framework) — see docs/ai-evaluation/model-registry.md.
+enum ModelApprovalState {
+  UNREVIEWED
+  UNDER_EVALUATION
+  APPROVED
+  REJECTED
+  DEPRECATED
+}
+
+enum AiInferenceKind {
+  GENERATION
+  EMBEDDING
+}
+
+enum AiFeedbackDecision {
+  ACCEPTED
+  REJECTED
+  EDITED
+  // DGX Prototype 1 additions — the catalogue RAG feedback taxonomy is
+  // richer than generic accept/reject/edit; added to the existing enum
+  // rather than a parallel one so AiFeedback stays the single feedback
+  // table for every AI surface. See docs/ai/catalogue-rag-architecture.md.
+  HELPFUL
+  NOT_HELPFUL
+  MISSING_RESULT
+  WRONG_FITMENT
+  WRONG_ALTERNATIVE
+  WRONG_LUBRICANT_APPROVAL
+  CITATION_ISSUE
+  REQUIRES_REVIEW
+}
+
+enum KnowledgeSourceType {
+  WORKSHOP_MANUAL
+  TECHNICAL_SERVICE_BULLETIN
+  OEM_REPAIR_PROCEDURE
+  INTERNAL_SOP
+  LUBRICANT_DOCUMENTATION
+  PARTS_DOCUMENTATION
+  SUPPLIER_CATALOGUE
+  VEHICLE_HISTORY
+  DIGITAL_TWIN
+  GARAGE_HISTORY
+  INSPECTION_REPORT
+  WARRANTY_CASE
+  REPEAT_REPAIR
+  COMPANY_POLICY
+  OTHER
+  // DGX Prototype 1.7 (Automotive Knowledge Platform) additions — coarse
+  // source-type tags for materialized KnowledgeDocument rows backing a
+  // published KnowledgeItemVersion (see knowledgeItemVersionId below);
+  // fine-grained categorization lives on KnowledgeItem.itemType.
+  KNOWLEDGE_PLATFORM_PROCEDURE
+  KNOWLEDGE_PLATFORM_POLICY
+  KNOWLEDGE_PLATFORM_STRUCTURED_FACT
+  KNOWLEDGE_PLATFORM_CASE_STUDY
+}
+
+enum CopyrightStatus {
+  OWNED
+  LICENSED
+  PUBLIC_DOMAIN
+  RESTRICTED
+  UNKNOWN
+}
+
+enum ForecastTargetType {
+  PART
+  LUBRICANT
+  BRANCH
+  SUPPLIER
+  GARAGE_WORKLOAD
+  CUSTOMER
+}
+
+enum ForecastMethod {
+  NAIVE
+  MOVING_AVERAGE
+  EXPONENTIAL_SMOOTHING
+  SEASONAL_NAIVE
+  // Data Validation & Business Baselining phase addition — Croston's method
+  // for intermittent demand (many zero-demand periods), where the
+  // NAIVE/MOVING_AVERAGE/EXPONENTIAL_SMOOTHING/SEASONAL_NAIVE methods above
+  // (all designed for dense series) systematically under- or over-forecast.
+  // See docs/data-readiness/forecast-baselines.md.
+  CROSTON
+}
+
+enum EvaluationPurpose {
+  RETRIEVAL
+  GENERATION
+  FORECAST
+  RECOMMENDATION
+}
+
+// Real, currently-installed models are seeded here (llama3:latest,
+// nomic-embed-text:latest, both served by the local Ollama instance) — see
+// docs/architecture/model-registry.md. `family` is a free-text label
+// (LLAMA/QWEN/DEEPSEEK/MISTRAL/GEMMA/PHI/NOMIC/OTHER) rather than an enum,
+// since Ollama's model catalogue grows independently of this schema.
+model AiModel {
+  id            String          @id @default(uuid())
+  name          String          @unique
+  provider      AiModelProvider @default(OLLAMA)
+  kind          AiModelKind
+  family        String
+  version       String?
+  quantization  String?
+  parameterSize String?
+  sizeBytes     BigInt?
+  status        AiModelStatus   @default(ACTIVE)
+  isDefault     Boolean         @default(false)
+  registeredAt  DateTime        @default(now())
+  notes         String?
+
+  // DGX Prototype 1.6 (AI Evaluation Framework) additions — all nullable,
+  // no existing row/caller is affected. `evaluationHistory` is deliberately
+  // NOT a stored column: it's a live relation lookup via BenchmarkRun's
+  // modelId/embeddingModelId, avoiding denormalized state that could drift
+  // from the real run history. See docs/ai-evaluation/model-registry.md.
+  contextLength           Int?
+  license                 String?
+  hardwareRequirements    Json?
+  embeddingDimensions     Int?
+  embeddingCompatibleWith Json?
+  approvalState           ModelApprovalState @default(UNREVIEWED)
+  rollbackTargetId        String?
+  rollbackTarget          AiModel?           @relation("ModelRollbackTarget", fields: [rollbackTargetId], references: [id])
+  rollbackSources         AiModel[]          @relation("ModelRollbackTarget")
+
+  promptVersions PromptVersion[]
+  inferenceLogs  AiInferenceLog[]
+  evaluationRuns EvaluationRun[]
+
+  benchmarkRunsAsModel          BenchmarkRun[] @relation("BenchmarkRunModel")
+  benchmarkRunsAsEmbeddingModel BenchmarkRun[] @relation("BenchmarkRunEmbeddingModel")
+
+  @@index([kind, status])
+  @@index([approvalState])
+}
+
+model PromptTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  purpose   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  versions PromptVersion[]
+}
+
+// Append-only versioning, same pattern as EstimateRevision: a template
+// correction creates a new PromptVersion (isActive: true) rather than
+// mutating a published one, so every past inference stays reproducible
+// against the exact prompt text it was generated with.
+model PromptVersion {
+  id                 String         @id @default(uuid())
+  templateId         String
+  template           PromptTemplate @relation(fields: [templateId], references: [id])
+  version            Int
+  systemPrompt       String
+  userPromptTemplate String
+  temperature        Float          @default(0.2)
+  maxTokens          Int?
+  modelId            String?
+  model              AiModel?       @relation(fields: [modelId], references: [id])
+  isActive           Boolean        @default(false)
+  publishedAt        DateTime       @default(now())
+  createdById        String?
+
+  inferenceLogs  AiInferenceLog[]
+  evaluationRuns EvaluationRun[]
+
+  // DGX Prototype 1.6 additions
+  benchmarkRuns        BenchmarkRun[]
+  promptExperimentArms PromptExperimentArm[]
+
+  @@unique([templateId, version])
+  @@index([templateId, isActive])
+}
+
+// Every inference, successful or not, is logged here — this is what makes
+// "every inference must be logged" structural rather than a convention: the
+// only method in AiGatewayService that calls the DGX service always writes
+// one of these, in a finally-equivalent path, before returning or throwing.
+model AiInferenceLog {
+  id                   String          @id @default(uuid())
+  kind                 AiInferenceKind
+  modelId              String?
+  model                AiModel?        @relation(fields: [modelId], references: [id])
+  promptVersionId      String?
+  promptVersion        PromptVersion?  @relation(fields: [promptVersionId], references: [id])
+  actorId              String?
+  actorRole            String?
+  correlationId        String?
+  promptText           String?
+  responseText         String?
+  temperature          Float?
+  tokensIn             Int?
+  tokensOut            Int?
+  latencyMs            Int?
+  confidence           Float?
+  retrievedDocumentIds Json?
+  success              Boolean
+  errorMessage         String?
+  createdAt            DateTime        @default(now())
+
+  feedback AiFeedback[]
+
+  @@index([kind, createdAt])
+  @@index([success])
+}
+
+model AiFeedback {
+  id             String             @id @default(uuid())
+  inferenceLogId String
+  inferenceLog   AiInferenceLog     @relation(fields: [inferenceLogId], references: [id])
+  actorId        String?
+  decision       AiFeedbackDecision
+  note           String?
+  createdAt      DateTime           @default(now())
+
+  @@index([inferenceLogId])
+}
+
+// "Never allow AI to answer from unverified documents" — isApproved is the
+// gate RagService checks before a document's chunks are eligible for
+// retrieval at all. accessPermissions holds a JSON list of Role strings;
+// null means visible to every role that can read the knowledge base.
+model KnowledgeDocument {
+  id                 String              @id @default(uuid())
+  source             String
+  sourceType         KnowledgeSourceType
+  title              String
+  version            String?
+  publicationDate    DateTime?
+  confidence         Float               @default(1.0)
+  copyrightStatus    CopyrightStatus     @default(UNKNOWN)
+  language           String              @default("en")
+  accessPermissions  Json?
+  sourceUri          String?
+  isApproved         Boolean             @default(false)
+  vehicleId          String?
+  vehicle            Vehicle?            @relation(fields: [vehicleId], references: [id])
+  partId             String?
+  part               Part?               @relation(fields: [partId], references: [id])
+  lubricantProductId String?
+  lubricantProduct   LubricantProduct?   @relation(fields: [lubricantProductId], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // DGX Prototype 1 addition — which catalogue index build this document
+  // belongs to, enabling blue-green corpus replacement (see
+  // CatalogueIndexVersion above). Null for every pre-existing Phase 4
+  // knowledge document (workshop manuals etc.), which aren't part of any
+  // catalogue index build and are unaffected by this phase.
+  indexVersionId String?
+  indexVersion   CatalogueIndexVersion? @relation(fields: [indexVersionId], references: [id])
+
+  // DGX Prototype 1.7 addition — the materialized retrieval-ready row for a
+  // published KnowledgeItemVersion (see KnowledgeItemVersion.knowledgeDocumentId
+  // below). Null for every pre-existing document unrelated to the Knowledge
+  // Platform. This reuses EmbeddingService's chunk/dedup/embed and
+  // VectorSearchService's isApproved-gated retrieval unmodified — see
+  // docs/knowledge-platform/knowledge-item-model.md for why this
+  // materialization approach was chosen over a parallel retrieval path.
+  knowledgeItemVersionId String?              @unique
+  knowledgeItemVersion   KnowledgeItemVersion? @relation(fields: [knowledgeItemVersionId], references: [id])
+
+  chunks KnowledgeChunk[]
+
+  @@index([sourceType, isApproved])
+  @@index([indexVersionId])
+}
+
+// The vector index itself — see docs/architecture/vector-search.md for why
+// `embedding Float[]` (a plain Postgres array, cosine-compared in
+// application code) is the deliberate interim backend instead of pgvector
+// (not available on this portable Postgres build) or Qdrant/Milvus (not
+// deployed). @@unique([documentId, checksum]) is what makes "do not embed
+// duplicated records" structural: re-ingesting identical text upserts
+// instead of creating a second chunk.
+model KnowledgeChunk {
+  id               String            @id @default(uuid())
+  documentId       String
+  document         KnowledgeDocument @relation(fields: [documentId], references: [id])
+  chunkIndex       Int
+  text             String
+  checksum         String
+  embeddingModel   String
+  embeddingVersion Int               @default(1)
+  embedding        Float[]
+  createdAt        DateTime          @default(now())
+
+  @@unique([documentId, checksum])
+  @@index([documentId])
+  @@index([embeddingModel])
+}
+
+// One run per (targetType, targetId, windowDays, method) — several methods
+// are run and compared per series, never just one assumed to be best. See
+// docs/architecture/forecasting.md.
+model ForecastRun {
+  id           String             @id @default(uuid())
+  targetType   ForecastTargetType
+  targetId     String?
+  windowDays   Int
+  method       ForecastMethod
+  generatedAt  DateTime           @default(now())
+  mape         Float?
+  rmse         Float?
+  mae          Float?
+  bias         Float?
+  // Data Validation & Business Baselining phase additions — WAPE/MASE are
+  // required alongside (not instead of) the existing MAPE/RMSE/MAE/bias,
+  // since the phase's explicit rule is "MAPE must not be used alone,
+  // especially for zero or intermittent demand." See
+  // docs/data-readiness/forecast-baselines.md.
+  wape         Float?
+  mase         Float?
+  confidence   String?
+  chosenAsBest Boolean            @default(false)
+  evidence     Json?
+
+  points ForecastPoint[]
+
+  @@index([targetType, targetId, windowDays])
+}
+
+model ForecastPoint {
+  id             String      @id @default(uuid())
+  forecastRunId  String
+  forecastRun    ForecastRun @relation(fields: [forecastRunId], references: [id])
+  forecastDate   DateTime
+  predictedValue Float
+  actualValue    Float?
+
+  @@index([forecastRunId, forecastDate])
+}
+
+model EvaluationDataset {
+  id        String            @id @default(uuid())
+  name      String            @unique
+  purpose   EvaluationPurpose
+  createdAt DateTime          @default(now())
+
+  cases EvaluationCase[]
+  runs  EvaluationRun[]
+}
+
+model EvaluationCase {
+  id             String            @id @default(uuid())
+  datasetId      String
+  dataset        EvaluationDataset @relation(fields: [datasetId], references: [id])
+  input          Json
+  expectedOutput Json
+  createdAt      DateTime          @default(now())
+
+  @@index([datasetId])
+}
+
+model EvaluationRun {
+  id              String            @id @default(uuid())
+  datasetId       String
+  dataset         EvaluationDataset @relation(fields: [datasetId], references: [id])
+  modelId         String?
+  model           AiModel?          @relation(fields: [modelId], references: [id])
+  promptVersionId String?
+  promptVersion   PromptVersion?    @relation(fields: [promptVersionId], references: [id])
+  startedAt       DateTime          @default(now())
+  completedAt     DateTime?
+  metrics         Json?
+  notes           String?
+
+  @@index([datasetId, startedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Enterprise Platform, Security, Connectivity & Edge Operations
+//
+// Everything below is additive: no Phase 1-4 model is renamed or dropped.
+// See docs/architecture/phase5-decision-log.md for the reasoning behind each
+// reuse-vs-new-model decision.
+// ---------------------------------------------------------------------------
+
+// --- Identity Platform (docs/architecture/identity-platform.md) -----------
+
+model UserSession {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  deviceId      String?
+  device        TrustedDevice? @relation(fields: [deviceId], references: [id])
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime       @default(now())
+  lastSeenAt    DateTime       @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  expiresAt     DateTime
+
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Rotation family: every refresh issues a new token in the same familyId and
+// revokes the one it replaced. Presenting an already-replaced token (token
+// reuse) revokes the *entire family* — the standard refresh-token-theft
+// detection pattern — rather than just rejecting the one bad token.
+model RefreshToken {
+  id                String      @id @default(uuid())
+  sessionId         String
+  session           UserSession @relation(fields: [sessionId], references: [id])
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  tokenHash         String      @unique
+  familyId          String
+  createdAt         DateTime    @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  revokedReason     String?
+  replacedByTokenId String?
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model TrustedDevice {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  deviceName        String?
+  deviceFingerprint String    @unique
+  trustedAt         DateTime  @default(now())
+  lastSeenAt        DateTime  @default(now())
+  revokedAt         DateTime?
+
+  sessions UserSession[]
+
+  @@index([userId])
+}
+
+model LoginHistoryEntry {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  email         String
+  success       Boolean
+  failureReason String?
+  ipAddress     String?
+  userAgent     String?
+  occurredAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([email, occurredAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Covers both real user-owned API keys and machine/service-account
+// identities (isServiceAccount: true, ownerUserId: null) — one model, since
+// both are "a hashed secret that resolves to a Role for the PermissionsGuard
+// to check," not two different authorization concepts.
+model ApiKey {
+  id               String    @id @default(uuid())
+  name             String
+  keyHash          String    @unique
+  keyPrefix        String
+  ownerUserId      String?
+  owner            User?     @relation(fields: [ownerUserId], references: [id])
+  isServiceAccount Boolean   @default(false)
+  role             Role
+  scopes           Json?
+  lastUsedAt       DateTime?
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([ownerUserId])
+}
+
+// --- Multi-tenant readiness (docs/architecture/tenant-readiness.md) -------
+
+model OrganizationConfiguration {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  timezone       String       @default("Africa/Dar_es_Salaam")
+  currency       String       @default("TZS")
+  locale         String       @default("en")
+  brandName      String?
+  logoUrl        String?
+  featureFlags   Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// --- API Platform (docs/architecture/api-platform.md) ----------------------
+
+// One row per Idempotency-Key header value; a repeat request with the same
+// key within its window returns the stored response instead of re-executing
+// a (possibly non-idempotent) side effect a second time.
+model IdempotencyKey {
+  id             String    @id @default(uuid())
+  key            String    @unique
+  actorId        String?
+  requestHash    String
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([createdAt])
+}
+
+// --- Change Data Capture (docs/architecture/cdc.md) ------------------------
+
+model CdcCheckpoint {
+  id          String   @id @default(uuid())
+  sourceName  String   @unique
+  lastLsn     String?
+  lastEventId String?
+  updatedAt   DateTime @updatedAt
+}
+
+model CdcEvent {
+  id             String    @id @default(uuid())
+  sourceName     String
+  tableName      String
+  operation      String
+  before         Json?
+  after          Json?
+  lsn            String?
+  occurredAt     DateTime
+  processedAt    DateTime?
+  conflict       Boolean   @default(false)
+  conflictReason String?
+  createdAt      DateTime  @default(now())
+
+  @@index([sourceName, processedAt])
+  @@index([sourceName, lsn])
+}
+
+// --- Branch Gateway / Edge Operations (docs/architecture/branch-gateway.md) -
+
+model BranchOutboxMessage {
+  id             String    @id @default(uuid())
+  branchId       String
+  branch         Branch    @relation(fields: [branchId], references: [id])
+  messageType    String
+  payload        Json
+  priority       Int       @default(5)
+  signature      String?
+  compressed     Boolean   @default(false)
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  lastAttemptAt  DateTime?
+  lastError      String?
+  sentAt         DateTime?
+  conflictReason String?
+  createdAt      DateTime  @default(now())
+
+  @@index([branchId, status, priority])
+}
+
+model BranchHealthPing {
+  id         String   @id @default(uuid())
+  branchId   String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  isOnline   Boolean
+  latencyMs  Int?
+  queueDepth Int?
+  pingedAt   DateTime @default(now())
+
+  @@index([branchId, pingedAt])
+}
+
+// --- Notification Service (docs/architecture/notifications.md) -------------
+
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  channel   String
+  subject   String?
+  body      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  dispatches NotificationDispatch[]
+}
+
+model NotificationPreference {
+  id      String  @id @default(uuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id])
+  channel String
+  enabled Boolean @default(true)
+
+  @@unique([userId, channel])
+}
+
+model NotificationDispatch {
+  id         String                @id @default(uuid())
+  templateId String?
+  template   NotificationTemplate? @relation(fields: [templateId], references: [id])
+  channel    String
+  recipient  String
+  userId     String?
+  user       User?                 @relation(fields: [userId], references: [id])
+  subject    String?
+  body       String
+  status     String                @default("PENDING")
+  attempts   Int                   @default(0)
+  lastError  String?
+  sentAt     DateTime?
+  createdAt  DateTime              @default(now())
+
+  @@index([channel, status])
+  @@index([userId])
+}
+
+// --- Backup & Disaster Recovery (docs/architecture/backup-disaster-recovery.md) -
+
+model BackupRun {
+  id           String    @id @default(uuid())
+  kind         String
+  filePath     String
+  sizeBytes    BigInt?
+  checksum     String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  status       String    @default("RUNNING")
+  errorMessage String?
+
+  restoreValidations RestoreValidation[]
+}
+
+model RestoreValidation {
+  id             String    @id @default(uuid())
+  backupRunId    String
+  backupRun      BackupRun @relation(fields: [backupRunId], references: [id])
+  validatedAt    DateTime  @default(now())
+  rowCountsMatch Boolean
+  details        Json?
+}
+
+// --- Production Security (docs/architecture/security-production.md) -------
+
+// Distinct from the generic AuditLog (Phase 2): security events are
+// authentication/authorization-boundary occurrences (login failure,
+// lockout, permission denial, refresh-token reuse) reviewed by a security
+// team, not general business-entity change history.
+model SecurityEvent {
+  id         String   @id @default(uuid())
+  eventType  String
+  userId     String?
+  actorRole  String?
+  ipAddress  String?
+  message    String
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  @@index([eventType, occurredAt])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Data Consolidation & Master Data Governance phase
+// (docs/data-consolidation/*.md, docs/data-sources/*.md)
+//
+// Deliberately reuses rather than duplicates existing machinery:
+//   - IntegrationSource.name is the unique feed identity (e.g.
+//     "MOLAS_CACHE_LUBRICANTS_CUSTOMERS") — already globally unique, so this
+//     is the fix for the cursor-collision class of bug, not a new concept.
+//   - SyncRun *is* the import batch (cursorBefore/cursorAfter, per-run
+//     counts) — no separate ImportBatch model.
+//   - SyncDeadLetter already covers dead-letter records for any entityType.
+//   - CustomerExternalReference / SupplierExternalReference /
+//     LubricantExternalReference already give those three entities
+//     multi-source canonical identity. Part, Warehouse, and Branch gain the
+//     same additive pattern below (PartExternalReference /
+//     WarehouseExternalReference / BranchExternalReference).
+// What's genuinely new: a raw staging layer (RawSourceRecord), schema/row
+// -count snapshots for drift detection, generalized cross-source entity
+// matching with confidence bands, a manual-review queue, reconciliation
+// reporting, and soft (non-destructive) deletion tracking. See
+// docs/data-consolidation/decision-log.md for why each of these was — or
+// deliberately was not — modeled as new schema.
+// ---------------------------------------------------------------------------
+
+enum RawRecordProcessingStatus {
+  STAGED
+  VALIDATED
+  NORMALIZED
+  MATCHED
+  IMPORTED
+  REJECTED
+  MANUAL_REVIEW
+}
+
+enum ValidationStatus {
+  PENDING
+  VALID
+  INVALID
+  WARNING
+}
+
+enum NormalizationStatus {
+  NOT_NORMALIZED
+  NORMALIZED
+  PARTIAL
+}
+
+enum MatchLevel {
+  EXACT
+  HIGH_CONFIDENCE
+  POSSIBLE_MATCH
+  NO_MATCH
+  CONFLICT
+}
+
+enum EntityMatchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_APPLIED
+}
+
+enum ManualReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DEFERRED
+}
+
+enum SourceDeletionResolution {
+  PENDING
+  CONFIRMED_DELETED
+  CONFIRMED_STILL_ACTIVE
+  FALSE_POSITIVE
+}
+
+// The staging layer itself. Every record extracted from a source system
+// lands here first — never directly into a domain table (Customer, Part,
+// LubricantProduct, SalesDocument, ...). One row per (feedName,
+// sourceRecordKey); re-extraction updates the same row and bumps
+// rawChecksum only if the content actually changed, the same
+// checksum-based idempotency convention Vehicle/Part/Customer already use
+// (see decision-log.md "Why source updates are checksum/version based").
+model RawSourceRecord {
+  id              String @id @default(uuid())
+  sourceSystem    String // e.g. "MOLAS_CACHE_LUBRICANTS", "PARTS_CATALOG_AUTOHUB"
+  sourceDatabase  String // e.g. "MolasCacheDb", "Parts_Catalog"
+  sourceSchema    String // e.g. "dbo", "public"
+  sourceTable     String // e.g. "CacheCustomers", "NeonAutoHubSalesOrders"
+  sourceRecordKey String // the real business/primary key value from the source, as text
+
+  feedName String // unique feed identity — see IntegrationSource.name
+  batchId  String // the SyncRun this record was (re-)staged by
+  batch    SyncRun @relation(fields: [batchId], references: [id])
+
+  rawPayload      Json
+  rawChecksum     String
+  extractedAt     DateTime  @default(now())
+  sourceCreatedAt DateTime?
+  sourceUpdatedAt DateTime?
+
+  processingStatus    RawRecordProcessingStatus @default(STAGED)
+  validationStatus    ValidationStatus          @default(PENDING)
+  normalizationStatus NormalizationStatus       @default(NOT_NORMALIZED)
+  matchingStatus      MatchLevel?
+
+  finalEntityType String?
+  finalEntityId   String?
+
+  errorDetails   Json?
+  warningDetails Json?
+
+  createdAt DateTime @updatedAt
+
+  matchCandidates EntityMatchCandidate[]
+  reviewItems     ManualReviewItem[]
+
+  @@unique([feedName, sourceRecordKey])
+  @@index([feedName, processingStatus])
+  @@index([sourceSystem, sourceTable])
+  @@index([finalEntityType, finalEntityId])
+}
+
+// A point-in-time schema + approximate-stats capture for one source table —
+// both "schema profile" and "data profile" from the spec in one row, since
+// in practice they're captured together and compared together (a column
+// added/removed IS a stats-relevant event). Used to detect schema drift
+// between profiling runs, not to store live data.
+model SourceSchemaSnapshot {
+  id             String   @id @default(uuid())
+  sourceSystem   String
+  sourceDatabase String
+  sourceSchema   String
+  sourceTable    String
+  columns        Json // [{name, type, nullable, isPrimaryKey}, ...]
+  schemaHash     String // hash of `columns`, for quick drift comparison
+  rowCountApprox BigInt?
+  capturedAt     DateTime @default(now())
+
+  @@index([sourceSystem, sourceTable, capturedAt])
+}
+
+// Generalizes PartMatchCandidate's "propose, never auto-merge" pattern
+// (docs/architecture/01-data-model.md §3) across every entity type this
+// phase consolidates, rather than adding a parallel PartMatchCandidate-alike
+// model per entity. PartMatchCandidate itself is untouched — it still
+// governs Part-to-Part duplicate proposals from Phase 1's own matcher; this
+// model governs "does this staged raw record correspond to an existing
+// canonical entity, or a new one" for Customer/Supplier/Part/Lubricant/
+// Warehouse/Branch/Vehicle.
+model EntityMatchCandidate {
+  id                String            @id @default(uuid())
+  entityType        String // "CUSTOMER" | "SUPPLIER" | "PART" | "LUBRICANT" | "WAREHOUSE" | "BRANCH" | "VEHICLE"
+  rawSourceRecordId String
+  rawSourceRecord   RawSourceRecord   @relation(fields: [rawSourceRecordId], references: [id])
+  candidateEntityId String? // existing canonical entity id, or null when proposing a brand-new one
+  matchLevel        MatchLevel
+  matchSignals      Json // which signals fired and their values, e.g. {"taxNumber": true, "phone": false}
+  confidenceScore   Float?
+  status            EntityMatchStatus @default(PENDING)
+  reviewedById      String?
+  reviewedByUser    User?             @relation("EntityMatchReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  createdAt         DateTime          @default(now())
+
+  @@index([entityType, matchLevel, status])
+  @@index([candidateEntityId])
+}
+
+// The single generic manual-review queue for every uncertain
+// decision this phase produces (customer/supplier/parts/lubricant/
+// warehouse/branch/vehicle matches, unresolved sales/purchase lines, Odoo
+// product mappings, financial reconciliation variance, inventory mismatch,
+// source conflicts) — one queue, one review workflow, rather than one table
+// per queue type. See docs/data-consolidation/manual-review.md.
+model ManualReviewItem {
+  id                            String           @id @default(uuid())
+  queueType                     String // e.g. "CUSTOMER_MATCH", "PARTS_DUPLICATE", "FINANCIAL_VARIANCE"
+  relatedRawSourceRecordId      String?
+  relatedRawSourceRecord        RawSourceRecord? @relation(fields: [relatedRawSourceRecordId], references: [id])
+  relatedEntityMatchCandidateId String?
+
+  proposedAction String
+  evidence       Json
+  confidence     Float?
+  status         ManualReviewStatus @default(PENDING)
+  reviewedById   String?
+  reviewedByUser User?              @relation("ManualReviewReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  decisionReason String?
+  beforeState    Json?
+  afterState     Json?
+  createdAt      DateTime           @default(now())
+
+  // Data Validation & Business Baselining phase additions (nullable/
+  // additive — every existing ManualReviewItem row from the Data
+  // Consolidation phase remains valid unchanged). Business-impact
+  // prioritization and batch assignment for the existing 241 real pending
+  // customer-match reviews — see docs/data-readiness/manual-review-programme.md.
+  priorityScore    Float?
+  reviewBatchId    String?
+  reviewBatch      ReviewBatch?          @relation(fields: [reviewBatchId], references: [id])
+  assignedToUserId String?
+  assignedAt       DateTime?
+  decisionDetail   ReviewDecisionDetail?
+
+  @@index([queueType, status])
+  @@index([reviewBatchId])
+  @@index([priorityScore])
+}
+
+// Per-batch, per-entity-type reconciliation — the answer to "can counts and
+// monetary totals be reconciled with the source." Currency fields use
+// Decimal, never Float, per the phase's explicit "no floating point for
+// money" rule.
+model ReconciliationReport {
+  id         String  @id @default(uuid())
+  batchId    String
+  batch      SyncRun @relation(fields: [batchId], references: [id])
+  entityType String
+
+  sourceCount       Int
+  extractedCount    Int
+  stagedCount       Int
+  validCount        Int
+  importedCount     Int
+  updatedCount      Int
+  duplicateCount    Int
+  deadLetterCount   Int
+  manualReviewCount Int
+  skippedCount      Int
+  targetCount       Int
+  variance          Int
+  varianceReason    String?
+
+  sourceSubtotal      Decimal? @db.Decimal(16, 2)
+  sourceTax           Decimal? @db.Decimal(16, 2)
+  sourceDiscount      Decimal? @db.Decimal(16, 2)
+  sourceTotal         Decimal? @db.Decimal(16, 2)
+  targetSubtotal      Decimal? @db.Decimal(16, 2)
+  targetTax           Decimal? @db.Decimal(16, 2)
+  targetDiscount      Decimal? @db.Decimal(16, 2)
+  targetTotal         Decimal? @db.Decimal(16, 2)
+  financialDifference Decimal? @db.Decimal(16, 2)
+
+  generatedAt DateTime @default(now())
+
+  @@index([batchId, entityType])
+}
+
+// A source record present in a prior batch but absent from a later one —
+// recorded, never destructively deleted from the target. See
+// docs/data-consolidation/decision-log.md "Why deleted source records are
+// never destructively removed."
+model SourceDeletionCandidate {
+  id                     String                   @id @default(uuid())
+  feedName               String
+  sourceRecordKey        String
+  lastSeenBatchId        String
+  lastSeenAt             DateTime
+  detectedMissingBatchId String
+  detectedMissingAt      DateTime                 @default(now())
+  resolutionStatus       SourceDeletionResolution @default(PENDING)
+  reviewedById           String?
+  reviewedAt             DateTime?
+  notes                  String?
+
+  @@unique([feedName, sourceRecordKey, detectedMissingBatchId])
+  @@index([feedName, resolutionStatus])
+}
+
+// Additive multi-source-reference tables for the entities that didn't
+// already have one (Customer/Supplier/LubricantProduct already do — see
+// CustomerExternalReference / SupplierExternalReference /
+// LubricantExternalReference above). Exactly the same shape, deliberately.
+model PartExternalReference {
+  id             String   @id @default(uuid())
+  partId         String
+  part           Part     @relation(fields: [partId], references: [id])
+  sourceSystem   String
+  sourceRecordId String
+  createdAt      DateTime @default(now())
+
+  @@unique([sourceSystem, sourceRecordId])
+}
+
+// MappingConfidence/MappingStatus for both Warehouse and Branch mappings —
+// one enum, reused by both tables below, rather than two near-identical
+// enums. See docs/data-readiness/branch-warehouse-mapping.md.
+enum MappingConfidence {
+  VERIFIED
+  HIGH_CONFIDENCE
+  REVIEW_REQUIRED
+  CONFLICT
+  UNMAPPED
+  RETIRED
+}
+
+model WarehouseExternalReference {
+  id           String    @id @default(uuid())
+  warehouseId  String
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id])
+  sourceSystem String
+  sourceCode   String
+  createdAt    DateTime  @default(now())
+
+  // Data Validation & Business Baselining phase additions (nullable/
+  // additive) — the spec's "SourceWarehouse/CanonicalWarehouse/
+  // MappingConfidence/MappingStatus/EffectiveFrom/EffectiveTo/Evidence/
+  // Reviewer" registry, implemented by extending this existing table
+  // rather than creating four new parallel ones. See
+  // docs/data-consolidation/decision-log.md "Why branch/warehouse
+  // resolution is deferred" and docs/data-readiness/decision-log.md.
+  mappingConfidence MappingConfidence @default(UNMAPPED)
+  evidence          Json?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+
+  @@unique([sourceSystem, sourceCode])
+  @@index([mappingConfidence])
+}
+
+model BranchExternalReference {
+  id           String   @id @default(uuid())
+  branchId     String
+  branch       Branch   @relation(fields: [branchId], references: [id])
+  sourceSystem String
+  sourceCode   String
+  createdAt    DateTime @default(now())
+
+  mappingConfidence MappingConfidence @default(UNMAPPED)
+  evidence          Json?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+
+  @@unique([sourceSystem, sourceCode])
+  @@index([mappingConfidence])
+}
+
+// ---------------------------------------------------------------------------
+// Data Validation, Business Baselining & AI Readiness phase
+// (docs/data-readiness/*.md)
+//
+// Continues the Data Consolidation phase's discipline of reusing existing
+// machinery rather than duplicating it: ManualReviewItem, WarehouseExternalReference,
+// and BranchExternalReference above were extended in place; ForecastRun/
+// ForecastMethod above gained WAPE/MASE/CROSTON. Several models the original
+// spec proposed as separate tables (SourcePriority, ReviewPriority,
+// ReviewEvidence, ReviewQualityCheck, ReviewUndoRequest, BaselineSegment,
+// BaselineEvidence, BaselineApproval, BaselineVersion, SourceBranch/
+// SourceWarehouse/CanonicalBranch/CanonicalWarehouse) were folded into
+// fields on the models below or onto the extended tables above — see
+// docs/data-readiness/decision-log.md for exactly which, and why.
+// ---------------------------------------------------------------------------
+
+enum AuthorityType {
+  ENTITY_LEVEL
+  FIELD_LEVEL
+  TEMPORAL
+  FALLBACK
+  MANUAL
+  UNRESOLVED
+}
+
+// One row per authority decision. fieldName null = entity-level rule.
+// Supersession is append-only (a new rule + effectiveTo on the old one) —
+// this IS the decision history (AuthorityDecisionHistory), rather than a
+// separate audit table duplicating what effectiveFrom/effectiveTo/createdAt
+// already record. See docs/data-readiness/source-of-truth-registry.md.
+model SourceAuthorityRule {
+  id                        String        @id @default(uuid())
+  entityType                String // "CUSTOMER" | "PART" | "LUBRICANT" | "SALES_DOCUMENT" | ...
+  fieldName                 String? // null = entity-level authority
+  authoritativeSourceSystem String
+  authorityType             AuthorityType
+  priority                  Int           @default(0) // lower = preferred, used for FALLBACK ordering
+  rationale                 String
+  decidedById               String?
+  effectiveFrom             DateTime      @default(now())
+  effectiveTo               DateTime?
+  createdAt                 DateTime      @default(now())
+
+  @@index([entityType, fieldName, effectiveTo])
+}
+
+model AuthorityConflict {
+  id                 String             @id @default(uuid())
+  entityType         String
+  fieldName          String?
+  conflictingSources Json // [{sourceSystem, value}, ...]
+  detectedAt         DateTime           @default(now())
+  resolutionStatus   ManualReviewStatus @default(PENDING)
+  resolvedById       String?
+  resolvedAt         DateTime?
+  resolutionNote     String?
+
+  @@index([entityType, resolutionStatus])
+}
+
+// A named grouping of ManualReviewItem rows for a controlled review pass —
+// see docs/data-readiness/manual-review-programme.md. Priority scoring and
+// assignment live directly on ManualReviewItem (extended above); this table
+// is just the batch header.
+model ReviewBatch {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  criteria    Json // the scoring inputs/weights used to build this batch
+  itemCount   Int      @default(0)
+  status      String   @default("OPEN") // OPEN | IN_PROGRESS | COMPLETED
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  items ManualReviewItem[]
+}
+
+enum ReviewDecisionType {
+  MERGE_APPROVED
+  KEEP_SEPARATE
+  LINK_AS_RELATED
+  REQUEST_MORE_INFORMATION
+  REJECT_PROPOSAL
+  DEFER
+  ESCALATE
+}
+
+// The richer decision record the phase requires beyond ManualReviewItem's
+// simple APPROVED/REJECTED status — one-to-one with the review item it
+// decides. Evidence and a lightweight quality check are fields here rather
+// than separate ReviewEvidence/ReviewQualityCheck tables (no observed need
+// for either to have independent multiplicity from the decision itself).
+// Reversibility (ReviewUndoRequest in the original brief) is fields here
+// too — reversing a decision is a direct, audited state change, not a
+// separate approval workflow with no reviewer UI to drive it yet.
+model ReviewDecisionDetail {
+  id                 String             @id @default(uuid())
+  manualReviewItemId String             @unique
+  manualReviewItem   ManualReviewItem   @relation(fields: [manualReviewItemId], references: [id])
+  decisionType       ReviewDecisionType
+  reviewerId         String?
+  evidence           Json
+  confidence         Float?
+  reason             String
+  sourceRecordRefs   Json // real source record keys this decision covers
+  canonicalEntityId  String?
+  beforeState        Json?
+  afterState         Json?
+  reversible         Boolean            @default(true)
+  reversedAt         DateTime?
+  reversedById       String?
+  reverseReason      String?
+  decidedAt          DateTime           @default(now())
+}
+
+// One row per named, versioned metric definition — the formula/source/
+// inclusion-exclusion rules a BaselineMetric value was computed under.
+// BaselineVersion (from the original brief) is just this table's `version`
+// column, not a separate table.
+model BaselineDefinition {
+  id                    String   @id @default(uuid())
+  metricName            String
+  version               Int      @default(1)
+  definition            String
+  formula               String
+  sourceSystems         Json
+  includedDocumentTypes Json?
+  excludedDocumentTypes Json?
+  createdAt             DateTime @default(now())
+  createdById           String?
+
+  metrics BaselineMetric[]
+
+  @@unique([metricName, version])
+}
+
+// One row per business-baseline computation run — the reproducibility
+// envelope (input row counts, source cursors, schema version, checksums)
+// the phase requires. BaselineApproval (from the original brief) is fields
+// here, not a separate table.
+model BaselineRun {
+  id                  String    @id @default(uuid())
+  dataCutoffAt        DateTime
+  sourceCursors       Json // IntegrationSource.name -> lastCommittedCursor at run time
+  inputRowCounts      Json
+  calculationChecksum String
+  outputChecksum      String
+  status              String    @default("DRAFT") // DRAFT | APPROVED
+  approvedById        String?
+  approvedAt          DateTime?
+  triggeredAt         DateTime  @default(now())
+  triggeredById       String?
+
+  metrics BaselineMetric[]
+}
+
+// One row per (run, metric, segment). `segment` (BaselineSegment in the
+// original brief) is a JSON descriptor here (e.g. {"branch": "DSM01"} or
+// {} for the unsegmented total) rather than a separate dimension table —
+// segments in this phase's real data are simple key/value filters, not a
+// dimension needing its own identity or hierarchy.
+model BaselineMetric {
+  id                   String             @id @default(uuid())
+  baselineRunId        String
+  baselineRun          BaselineRun        @relation(fields: [baselineRunId], references: [id])
+  baselineDefinitionId String
+  baselineDefinition   BaselineDefinition @relation(fields: [baselineDefinitionId], references: [id])
+  segment              Json               @default("{}")
+  value                Decimal            @db.Decimal(18, 4)
+  currency             String?
+  dateRangeStart       DateTime?
+  dateRangeEnd         DateTime?
+  dataQualityScore     Float?
+  confidence           String? // HIGH | MEDIUM | LOW | NOT_READY
+  evidence             Json?
+  computedAt           DateTime           @default(now())
+
+  @@index([baselineRunId, baselineDefinitionId])
+}
+
+enum DataQualityClassification {
+  EXCELLENT
+  GOOD
+  ACCEPTABLE_WITH_WARNINGS
+  POOR
+  NOT_USABLE
+}
+
+// Dimension-level scores are all stored explicitly — the phase's rule is
+// "do not hide low-quality data behind one overall average." `scopeType`/
+// `scopeId` are a deliberately generic polymorphic reference (source name,
+// entity type, a specific record id, a baseline metric id, or an AI
+// dataset id) rather than one score table per scope type.
+model DataQualityScore {
+  id                     String                    @id @default(uuid())
+  scopeType              String // SOURCE | DATASET | ENTITY_TYPE | RECORD | BASELINE_METRIC | AI_DATASET
+  scopeId                String
+  completeness           Float
+  validity               Float
+  uniqueness             Float
+  consistency            Float
+  timeliness             Float
+  referentialIntegrity   Float
+  reconciliationAccuracy Float
+  provenanceCompleteness Float
+  overallClassification  DataQualityClassification
+  computedAt             DateTime                  @default(now())
+  computedByVersion      String
+
+  @@index([scopeType, scopeId])
+}
+
+enum AIUseCaseStatus {
+  READY_FOR_PROTOTYPE
+  READY_FOR_OFFLINE_EVALUATION
+  NEEDS_MORE_DATA
+  NEEDS_LABELING
+  BLOCKED_BY_SOURCE_ACCESS
+  NOT_APPROPRIATE
+  PRODUCTION_READY
+  DEFERRED
+}
+
+model AIUseCaseReadiness {
+  id                    String          @id @default(uuid())
+  useCaseName           String          @unique
+  businessObjective     String
+  requiredData          Json
+  availableData         Json
+  missingData           Json
+  labelDefinition       String?
+  labelAvailability     String?
+  sampleSize            Int?
+  dateCoverageStart     DateTime?
+  dateCoverageEnd       DateTime?
+  featureCompleteness   Float?
+  targetLeakageRisk     String?
+  classImbalanceRisk    String?
+  biasRisk              String?
+  groundTruthQuality    String?
+  evaluationMethod      String?
+  humanApprovalRequired Boolean         @default(true)
+  safetyRisk            String?
+  status                AIUseCaseStatus
+  recommendation        String
+  assessedAt            DateTime        @default(now())
+  assessedByVersion     String
+}
+
+// A versioned, reproducible dataset-build specification for one approved
+// AI prototype — see docs/data-readiness/ai-dataset-contracts.md.
+model AIDatasetContract {
+  id                      String    @id @default(uuid())
+  datasetName             String
+  buildVersion            Int       @default(1)
+  businessPurpose         String
+  sourceEntities          Json
+  dateRangeStart          DateTime
+  dateRangeEnd            DateTime
+  requiredFields          Json
+  optionalFields          Json?
+  exclusionRules          Json?
+  qualityThresholds       Json?
+  labelDefinition         String?
+  featureDefinition       Json
+  entityKey               String
+  timeKey                 String?
+  trainSplitStrategy      String
+  validationSplitStrategy String
+  testSplitStrategy       String
+  leakageControls         Json
+  missingValuePolicy      String
+  outlierPolicy           String
+  deduplicationPolicy     String
+  personalDataPolicy      String
+  provenanceFields        Json
+  datasetChecksum         String?
+  createdAt               DateTime  @default(now())
+  approvedById            String?
+  approvedAt              DateTime?
+
+  @@unique([datasetName, buildVersion])
+}
+
+// An immutable, versioned capture of exactly what real data a baseline run
+// or AI dataset build was produced from — never train/report directly from
+// continuously-changing production tables. See docs/data-readiness/data-snapshots.md.
+model DataSnapshot {
+  id                   String    @id @default(uuid())
+  snapshotName         String
+  sourceSystems        Json
+  sourceSchemaVersions Json?
+  dataCutoffAt         DateTime
+  cursorPositions      Json
+  rowCounts            Json
+  financialTotals      Json?
+  datasetChecksums     Json
+  createdAt            DateTime  @default(now())
+  createdById          String?
+  approvedById         String?
+  approvedAt           DateTime?
+  retentionPolicy      String    @default("RETAIN_INDEFINITELY")
+
+  indexVersions CatalogueIndexVersion[]
+
+  @@unique([snapshotName])
+}
+
+// ---------------------------------------------------------------------------
+// DGX Prototype 1 — Automotive Catalogue RAG, Parts Intelligence & Verified
+// Product Retrieval (docs/ai/*.md)
+//
+// Reuses Phase 4's KnowledgeDocument/KnowledgeChunk/RagService/
+// VectorSearchService/EmbeddingService/AiFeedback/AiInferenceLog machinery
+// unchanged — this phase adds only what genuinely didn't exist: index
+// lifecycle/versioning (blue-green), and a parts relationship graph
+// covering relationship types PartMatchCandidate/PartCompatibility/
+// LubricantAlternative don't already cover. See docs/ai/decision-log-catalogue-rag.md.
+// ---------------------------------------------------------------------------
+
+enum CatalogueIndexStatus {
+  BUILDING
+  VALIDATING
+  EVALUATING
+  APPROVED
+  ACTIVE
+  ROLLED_BACK
+  RETIRED
+}
+
+// One row per corpus build. Only one index may be ACTIVE at a time — the
+// currently-active version's KnowledgeDocuments are the ones
+// VectorSearchService actually searches (via KnowledgeDocument.indexVersionId
+// below), so replacing the corpus is a blue-green flip of `status`
+// (old ACTIVE -> RETIRED, new APPROVED -> ACTIVE), never an in-place
+// overwrite of live documents.
+model CatalogueIndexVersion {
+  id                      String               @id @default(uuid())
+  versionNumber           Int
+  dataSnapshotId          String?
+  dataSnapshot            DataSnapshot?        @relation(fields: [dataSnapshotId], references: [id])
+  status                  CatalogueIndexStatus @default(BUILDING)
+  embeddingModel          String?
+  embeddingModelVersion   Int?
+  chunkingStrategyVersion Int                  @default(1)
+  corpusChecksum          String?
+  partsIndexed            Int                  @default(0)
+  lubricantsIndexed       Int                  @default(0)
+  partsExcluded           Json?
+  evaluationMetrics       Json?
+  builtAt                 DateTime             @default(now())
+  validatedAt             DateTime?
+  evaluatedAt             DateTime?
+  approvedById            String?
+  approvedAt              DateTime?
+  activatedAt             DateTime?
+  retiredAt               DateTime?
+
+  documents KnowledgeDocument[]
+
+  // DGX Prototype 1.6 addition — purely a back-relation, no semantic change
+  // to this model's own build/validate/approve/activate lifecycle.
+  benchmarkRuns BenchmarkRun[]
+
+  @@unique([versionNumber])
+  @@index([status])
+}
+
+enum PartRelationshipType {
+  SAME_AS
+  ALTERNATE_NUMBER
+  SUPERSEDES
+  SUPERSEDED_BY
+  COMPATIBLE_WITH
+  PART_OF_KIT
+  REPLACED_WITH
+  RELATED_SERVICE_ITEM
+  MANUAL_REVIEW_LINK
+}
+
+// FITS_VEHICLE/FITS_ENGINE/FITS_TRANSMISSION from the original brief already
+// have a real, existing model — PartCompatibility (Phase 1) — and are not
+// duplicated here. This model covers the part-to-part relationship types
+// PartMatchCandidate (duplicate detection only) doesn't: real supersession,
+// kit membership, and replacement chains, with per-relationship confidence,
+// verification, and evidence — never auto-derived as transitive without
+// checking the relationship type actually supports it (see
+// docs/ai/parts-search-ranking.md).
+model PartRelationship {
+  id                 String               @id @default(uuid())
+  fromPartId         String
+  fromPart           Part                 @relation("RelationshipFrom", fields: [fromPartId], references: [id])
+  toPartId           String
+  toPart             Part                 @relation("RelationshipTo", fields: [toPartId], references: [id])
+  relationshipType   PartRelationshipType
+  source             String
+  confidence         Float?
+  verificationStatus MatchCandidateStatus @default(PENDING)
+  evidence           Json
+  reviewerId         String?
+  createdAt          DateTime             @default(now())
+  verifiedAt         DateTime?
+
+  @@unique([fromPartId, toPartId, relationshipType])
+  @@index([relationshipType, verificationStatus])
+}
+
+// ---------------------------------------------------------------------------
+// DGX Prototype 1.6 — Automotive AI Evaluation Framework
+//
+// Purely additive: no Phase 1-5/DGX-Prototype-1/1.5 model is renamed,
+// dropped, or has a column removed. This is the evaluation *platform* every
+// future AI capability must pass through — it does not touch Catalogue AI
+// or the Operational Core. `src/ai-evaluation/` (Phase 4/5, generic
+// EvaluationDataset/Case/Run over RagService) is a different, already-real
+// module and is intentionally left untouched; this is new infrastructure
+// living in `src/ai-benchmark/`. See docs/ai-evaluation/decision-log.md.
+//
+// "Never collapse categories into one average" is enforced partly at this
+// schema level: BenchmarkRun.metrics is always scoped to exactly one
+// Benchmark (and therefore one BenchmarkCategory) — there is structurally
+// no row here that spans categories. A BenchmarkSuiteRun only aggregates by
+// counting gate outcomes (PASS/FAIL/WAIVED), never by averaging metrics
+// across categories.
+// ---------------------------------------------------------------------------
+
+// The literal 16-category list from the spec. Hallucination and Citation
+// are deliberately NOT separate values here (a real decision, confirmed
+// with the user) — they get their own dedicated structs/case files/docs/
+// scores, but as named sub-scores nested inside GENERATION's CategoryMetrics
+// (see src/ai-benchmark/categories/category-taxonomy.ts), not new top-level
+// categories.
+enum BenchmarkCategory {
+  RETRIEVAL
+  GENERATION
+  SAFETY
+  SECURITY
+  PERFORMANCE
+  SWAHILI
+  ENGLISH
+  MIXED_LANGUAGE
+  REASONING
+  CONFLICT_DETECTION
+  PERMISSION_ENFORCEMENT
+  PROMPT_INJECTION
+  LATENCY
+  RELIABILITY
+  REGRESSION
+  PRODUCTION_READINESS
+  // DGX Prototype 1.7 (Automotive Knowledge Platform) addition — a real
+  // decision confirmed with the user during planning: retrieval-accuracy/
+  // supersession-accuracy/applicability-accuracy/authority-ranking-accuracy/
+  // expired-restricted-exclusion/graph-relation-accuracy/structured-fact-
+  // extraction-accuracy all nest as sub-scores inside this ONE new
+  // category's KnowledgeCategoryMetrics, mirroring exactly how Hallucination/
+  // Citation ride as sub-scores inside GENERATION rather than becoming
+  // separate categories. Conflict-detection/prompt-injection knowledge
+  // benchmarks reuse the existing CONFLICT_DETECTION/PROMPT_INJECTION
+  // categories directly. See docs/knowledge-platform/evaluation-framework-integration.md.
+  KNOWLEDGE
+}
+
+enum BenchmarkApprovalStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  RETIRED
+}
+
+enum BenchmarkCaseStatus {
+  DRAFT
+  REVIEW_REQUIRED
+  APPROVED
+  CONFLICTING
+  RETIRED
+}
+
+enum BenchmarkRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// SCHEDULED_DOC_ONLY: no scheduler/queue library (@nestjs/schedule, bull,
+// node-cron) is installed in this repo (confirmed via package.json) — this
+// trigger value exists so a documented CI/cron wiring path can be recorded
+// honestly without fabricating a live scheduler. See
+// docs/ai-evaluation/continuous-evaluation.md.
+enum BenchmarkRunTrigger {
+  MANUAL
+  CI
+  PRE_DEPLOYMENT
+  SCHEDULED_DOC_ONLY
+}
+
+enum BenchmarkGateStatus {
+  PASS
+  FAIL
+  WAIVED
+}
+
+enum BenchmarkSuiteDecision {
+  APPROVED
+  REJECTED
+  CONDITIONAL
+}
+
+// A different, smaller taxonomy than BenchmarkCategory — GROUNDEDNESS and
+// HUMAN_APPROVAL are not categories at all (the former is a metric
+// threshold computed from a GENERATION-category run, the latter isn't a
+// metric). See docs/ai-evaluation/quality-gates.md.
+enum QualityGate {
+  RETRIEVAL
+  SAFETY
+  CITATION
+  GROUNDEDNESS
+  PERFORMANCE
+  REGRESSION
+  HUMAN_APPROVAL
+}
+
+// The Benchmark Registry entry — versioned like PromptVersion (append-only:
+// a correction creates version=latest+1, never edits a published version).
+// isGold + checksum together implement the immutable Gold Dataset
+// requirement: once approvalStatus=APPROVED and isGold=true, application
+// code (BenchmarkRegistryService) refuses further case mutation — see
+// docs/ai-evaluation/gold-dataset.md.
+model Benchmark {
+  id             String                  @id @default(uuid())
+  key            String
+  version        Int
+  category       BenchmarkCategory
+  subCategory    String?
+  name           String
+  description    String
+  ownerId        String?
+  reviewerId     String?
+  approvalStatus BenchmarkApprovalStatus @default(DRAFT)
+  approvedAt     DateTime?
+  isGold         Boolean                 @default(false)
+  checksum       String?
+  provenance     Json
+  createdAt      DateTime                @default(now())
+  createdById    String?
+
+  cases            BenchmarkCase[]
+  runs             BenchmarkRun[]
+  promptExperiments PromptExperiment[]
+
+  @@unique([key, version])
+  @@index([category, approvalStatus])
+}
+
+model BenchmarkCase {
+  id             String              @id @default(uuid())
+  benchmarkId    String
+  benchmark      Benchmark           @relation(fields: [benchmarkId], references: [id])
+  externalCaseId String
+  input          Json
+  expectedOutput Json
+  difficulty     String
+  language       String              @default("en")
+  status         BenchmarkCaseStatus @default(DRAFT)
+  reviewedById   String?
+  reviewedAt     DateTime?
+  provenance     Json?
+  createdAt      DateTime            @default(now())
+
+  @@unique([benchmarkId, externalCaseId])
+  @@index([benchmarkId, status])
+}
+
+// One row per pipeline execution against one Benchmark — always scoped to
+// exactly one category (via benchmark.category). `metrics` holds that
+// category's own CategoryMetrics shape only, never a cross-category blend.
+model BenchmarkRun {
+  id               String                 @id @default(uuid())
+  benchmarkId      String
+  benchmark        Benchmark              @relation(fields: [benchmarkId], references: [id])
+  suiteRunId       String?
+  suiteRun         BenchmarkSuiteRun?     @relation(fields: [suiteRunId], references: [id])
+  modelId          String?
+  model            AiModel?               @relation("BenchmarkRunModel", fields: [modelId], references: [id])
+  embeddingModelId String?
+  embeddingModel   AiModel?               @relation("BenchmarkRunEmbeddingModel", fields: [embeddingModelId], references: [id])
+  rerankerName     String?
+  promptVersionId  String?
+  promptVersion    PromptVersion?         @relation(fields: [promptVersionId], references: [id])
+  indexVersionId   String?
+  indexVersion     CatalogueIndexVersion? @relation(fields: [indexVersionId], references: [id])
+  trigger          BenchmarkRunTrigger    @default(MANUAL)
+  status           BenchmarkRunStatus     @default(RUNNING)
+  casesEvaluated   Int                    @default(0)
+  casesExcluded    Int                    @default(0)
+  metrics          Json?
+  previousRunId    String?
+  previousRun      BenchmarkRun?          @relation("BenchmarkRunRegression", fields: [previousRunId], references: [id])
+  regressed        Boolean?
+  regressionDetail Json?
+  gateStatus       BenchmarkGateStatus?
+  reportPath       String?
+  startedAt        DateTime               @default(now())
+  completedAt      DateTime?
+  createdById      String?
+
+  laterRuns        BenchmarkRun[]         @relation("BenchmarkRunRegression")
+  experimentArms   PromptExperimentArm[]
+
+  @@index([benchmarkId, startedAt])
+  @@index([modelId])
+}
+
+// Groups several BenchmarkRuns (one per category exercised) under a single
+// human decision — the only place an "overall" outcome exists, and even
+// then it's a count of gate PASS/FAIL/WAIVED, never an averaged score.
+model BenchmarkSuiteRun {
+  id            String                  @id @default(uuid())
+  label         String?
+  trigger       BenchmarkRunTrigger     @default(MANUAL)
+  status        BenchmarkRunStatus      @default(RUNNING)
+  startedAt     DateTime                @default(now())
+  completedAt   DateTime?
+  decision      BenchmarkSuiteDecision?
+  decisionById  String?
+  decisionAt    DateTime?
+  decisionNotes String?
+  reportPath    String?
+
+  runs BenchmarkRun[]
+}
+
+// A/B (or A/B/C...) prompt comparison. Reuses PromptRegistryService's
+// existing append-only PromptVersion rows directly — no parallel prompt-
+// versioning mechanism. `selectionMetric` is a single named dotted path
+// (e.g. "generation.avgGroundedness") — the winner is picked by that metric
+// alone; see src/ai-benchmark/experiments/metric-selection.ts.
+model PromptExperiment {
+  id              String    @id @default(uuid())
+  name            String    @unique
+  hypothesis      String?
+  status          String    @default("DRAFT")
+  selectionMetric String
+  benchmarkId     String?
+  benchmark       Benchmark? @relation(fields: [benchmarkId], references: [id])
+  winnerArmId     String?   @unique
+  winnerArm       PromptExperimentArm? @relation("PromptExperimentWinner", fields: [winnerArmId], references: [id])
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  decidedById     String?
+  decidedAt       DateTime?
+  decisionNotes   String?
+
+  arms PromptExperimentArm[] @relation("PromptExperimentArms")
+}
+
+model PromptExperimentArm {
+  id              String           @id @default(uuid())
+  experimentId    String
+  experiment      PromptExperiment @relation("PromptExperimentArms", fields: [experimentId], references: [id])
+  label           String
+  promptVersionId String
+  promptVersion   PromptVersion    @relation(fields: [promptVersionId], references: [id])
+  runId           String?
+  run             BenchmarkRun?    @relation(fields: [runId], references: [id])
+  metrics         Json?
+  createdAt       DateTime         @default(now())
+
+  wonExperiment PromptExperiment? @relation("PromptExperimentWinner")
+
+  @@unique([experimentId, label])
+}
+
+// ---------------------------------------------------------------------------
+// DGX Prototype 1.7 — Automotive Knowledge Platform
+//
+// Purely additive: no Phase 1-5/DGX-Prototype-1/1.5/1.6 model is renamed,
+// dropped, or has a column removed. This is the governed, versioned,
+// traceable knowledge layer future AI capabilities will consume — it does
+// not replace src/knowledge-base/ (KnowledgeDocument/KnowledgeChunk, still
+// used unmodified) or CatalogueIndexVersion (still catalogue-parts/
+// lubricants-specific, still unmodified). A published KnowledgeItemVersion
+// materializes exactly one companion KnowledgeDocument row (via the new
+// KnowledgeDocument.knowledgeItemVersionId column above) to inherit real,
+// working chunk/embed/isApproved-gated retrieval for free — see
+// docs/knowledge-platform/knowledge-item-model.md.
+//
+// The Operational Core remains authoritative for transactions; this
+// platform is authoritative only for APPROVED knowledge. No AI model
+// writes directly into any model below — every mutation is a real,
+// audited service-layer call (see docs/knowledge-platform/audit-logging.md).
+// ---------------------------------------------------------------------------
+
+enum KnowledgeSourceAuthority {
+  OEM_OFFICIAL
+  OEM_AUTHORIZED_DISTRIBUTOR
+  INDEPENDENT_TECHNICAL_PUBLISHER
+  INTERNAL_WORKSHOP
+  COMMUNITY_SOURCED
+  UNKNOWN
+}
+
+enum KnowledgeSourceStatus {
+  DISCOVERED
+  UNDER_REVIEW
+  APPROVED
+  APPROVED_WITH_RESTRICTIONS
+  REJECTED
+  EXPIRED
+  SUSPENDED
+  WITHDRAWN
+  ARCHIVED
+}
+
+// A real Knowledge Source Registry entry (spec §5). Of the ~10 sub-entities
+// the spec lists, only this one is a real table — licenseTerms/
+// accessClassification/contactInfo collapse into JSON/string fields since
+// none has an independent lifecycle or query pattern that justifies its own
+// table, matching the existing accessPermissions: Json? precedent on
+// KnowledgeDocument. See docs/knowledge-platform/source-registry.md.
+model KnowledgeSource {
+  id                    String                   @id @default(uuid())
+  name                  String                   @unique
+  publisher             String?
+  provider              String?
+  authority             KnowledgeSourceAuthority @default(UNKNOWN)
+  status                KnowledgeSourceStatus    @default(DISCOVERED)
+  domain                String?
+  accessMethod          String?
+  reliability            Float?
+  licenseTerms          Json?
+  copyrightStatus       CopyrightStatus          @default(UNKNOWN)
+  accessClassification  String?
+  allowedInternalUse    Boolean                  @default(false)
+  allowedAiUse          Boolean                  @default(false)
+  allowedEmbeddingUse   Boolean                  @default(false)
+  allowedQuotationUse   Boolean                  @default(false)
+  redistributionRestrictions String?
+  updateFrequency       String?
+  language              String                   @default("en")
+  geographicScope       String?
+  vehicleBrandScope     String?
+  effectiveFrom         DateTime?
+  effectiveUntil        DateTime?
+  restrictedReason      String?
+  reviewerId            String?
+  lastVerifiedAt        DateTime?
+  createdById           String?
+  createdAt             DateTime                 @default(now())
+
+  items KnowledgeItem[]
+  permissions KnowledgeSourcePermission[]
+
+  @@index([status, authority])
+}
+
+// DGX Prototype 1.7.1 — machine-enforced source permission matrix (spec §7).
+// Deliberately one row per (sourceId, action), not 13 booleans on
+// KnowledgeSource — matches the per-dimension-junction precedent already
+// established by KnowledgeItemVehicleApplicability et al., and lets a new
+// action be added later without a schema change. This is ADDITIVE to (never
+// a replacement of) KnowledgeSource's existing allowedAiUse/allowedEmbeddingUse/
+// allowedQuotationUse booleans, which assertPublishEligible() and
+// searchKnowledge() already enforce — real call sites must check both (AND
+// logic), never just one, so the two enforcement surfaces can't silently
+// drift apart. See docs/trusted-knowledge-pilot/source-permission-matrix.md.
+enum KnowledgeSourceAction {
+  STORE_ORIGINAL
+  PARSE
+  EXTRACT_METADATA
+  EXTRACT_STRUCTURED_FACTS
+  CREATE_SEARCH_INDEX
+  CREATE_EMBEDDINGS
+  USE_FOR_RAG
+  DISPLAY_TO_INTERNAL_USER
+  DISPLAY_EXCERPT
+  EXPORT
+  REDISTRIBUTE
+  USE_FOR_MODEL_TRAINING
+  USE_FOR_FINE_TUNING
+}
+
+model KnowledgeSourcePermission {
+  id       String                @id @default(uuid())
+  sourceId String
+  source   KnowledgeSource       @relation(fields: [sourceId], references: [id])
+  action   KnowledgeSourceAction
+  allowed  Boolean               @default(false)
+  reason   String?
+  setById  String?
+  setAt    DateTime              @default(now())
+
+  @@unique([sourceId, action])
+}
+
+// DGX Prototype 1.7.1 — versioned extraction profiles per document type
+// (spec §16). `documentType` is a String, not a new enum, deliberately —
+// a profile is data (versioned config), not a structural type the DB needs
+// to constrain, matching KnowledgeSource.licenseTerms/accessClassification's
+// own "collapse into JSON/string where there's no independent lifecycle"
+// precedent. Adding an 12th profile later needs zero migration.
+model ExtractionProfile {
+  id           String   @id @default(uuid())
+  documentType String
+  version      Int
+  fieldRules   Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@unique([documentType, version])
+}
+
+enum KnowledgeItemType {
+  TECHNICAL_BULLETIN
+  REPAIR_PROCEDURE
+  DIAGNOSTIC_PROCEDURE
+  INSPECTION_PROCEDURE
+  SERVICE_INTERVAL
+  TORQUE_SPECIFICATION
+  FLUID_SPECIFICATION
+  LUBRICANT_APPROVAL
+  PART_FITMENT
+  PART_SUPERSESSION
+  PRODUCT_TECHNICAL_DATA
+  SAFETY_WARNING
+  WARRANTY_RULE
+  WORKSHOP_SOP
+  INVENTORY_POLICY
+  PURCHASING_POLICY
+  CUSTOMER_SERVICE_POLICY
+  DATA_GOVERNANCE_POLICY
+  AI_GOVERNANCE_POLICY
+  TRAINING_MATERIAL
+  VEHICLE_TECHNICAL_PROFILE
+  ENGINE_TECHNICAL_PROFILE
+  TRANSMISSION_TECHNICAL_PROFILE
+  TROUBLESHOOTING_GUIDE
+  KNOWN_ISSUE
+  INTERNAL_CASE_NOTE
+  REPEAT_REPAIR_CASE
+  OTHER
+}
+
+enum KnowledgeItemStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  SUPERSEDED
+  EXPIRED
+  WITHDRAWN
+  REJECTED
+  ARCHIVED
+}
+
+// The canonical KnowledgeItem (spec §7) — a stable identity across an
+// append-only chain of KnowledgeItemVersion rows (spec §8), the exact
+// structural mirror of Benchmark/BenchmarkRegistryService's proven
+// pattern: `key` is the stable identity, `currentVersionId` is the only
+// ever-mutated pointer (updated only on publish/supersede/withdraw), and a
+// correction always creates version = latest+1, never edits a published row.
+model KnowledgeItem {
+  id               String            @id @default(uuid())
+  key              String            @unique
+  itemType         KnowledgeItemType
+  sourceId         String
+  source           KnowledgeSource   @relation(fields: [sourceId], references: [id])
+  currentVersionId String?           @unique
+  currentVersion   KnowledgeItemVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  ownerId          String?
+  createdById      String?
+  createdAt        DateTime          @default(now())
+
+  versions               KnowledgeItemVersion[]                @relation("ItemVersions")
+  claims                 KnowledgeClaim[]
+  facts                  StructuredFact[]
+  applicableVehicles     KnowledgeItemVehicleApplicability[]
+  applicableParts        KnowledgeItemPartApplicability[]
+  applicableEngines      KnowledgeItemEngineApplicability[]
+  applicableFaultCodes   KnowledgeItemFaultCodeApplicability[]
+
+  @@index([itemType])
+}
+
+model KnowledgeItemVersion {
+  id                  String               @id @default(uuid())
+  itemId              String
+  item                KnowledgeItem        @relation("ItemVersions", fields: [itemId], references: [id])
+  version             Int
+  title               String
+  rawContent          String
+  contentChecksum     String
+  status              KnowledgeItemStatus  @default(DRAFT)
+  authorityLevel      KnowledgeSourceAuthority
+  effectiveFrom       DateTime?
+  effectiveUntil      DateTime?
+  supersedesVersionId String?              @unique
+  supersedesVersion   KnowledgeItemVersion? @relation("Supersession", fields: [supersedesVersionId], references: [id])
+  supersededBy        KnowledgeItemVersion? @relation("Supersession")
+  reviewedById        String?
+  reviewedAt          DateTime?
+  approvedById        String?
+  approvedAt          DateTime?
+  publishedAt         DateTime?
+  withdrawnAt         DateTime?
+  withdrawnReason     String?
+  provenance          Json
+  // DGX Prototype 1.7 — real encrypted-at-rest original source bytes (spec
+  // §36), a thin base64 + AES-256-GCM wrapper over the existing
+  // common/crypto/field-encryption.ts, not a new cipher. Null when the
+  // ingested source was already plain text with no separate binary
+  // original to preserve.
+  encryptedRawSource  String?
+  // DGX Prototype 1.7.1 — real key-rotation support for encryptedRawSource
+  // (spec §10). Null means legacy/plaintext (no separate encrypted original
+  // exists), matching encryptedRawSource's own null-safe convention. See
+  // document-encryption-key.service.ts (mirrors identity/jwt-key.service.ts's
+  // current+previous key pattern) and docs/trusted-knowledge-pilot/encryption-at-rest.md.
+  encryptionKeyId     String?
+  // DGX Prototype 1.7.1 — real OCR fallback metadata (spec §14). ocrConfidence
+  // gates whether a high-risk structured fact derived from this version may
+  // be auto-visible to AI consumers (see structured-fact.service.ts's
+  // LOW_CONFIDENCE_OCR extractedBy handling).
+  ocrApplied          Boolean              @default(false)
+  ocrConfidence       Float?
+  createdById         String?
+  createdAt           DateTime             @default(now())
+
+  itemAsCurrent   KnowledgeItem?     @relation("CurrentVersion")
+  claims          KnowledgeClaim[]
+  facts           StructuredFact[]
+  reviewAssignments KnowledgeReviewAssignment[]
+  knowledgeDocument KnowledgeDocument?
+  snapshotItemVersions KnowledgeSnapshotItemVersion[]
+
+  @@unique([itemId, version])
+  @@index([itemId, status])
+  @@index([effectiveUntil])
+}
+
+// Per-dimension applicability junctions (spec's many-to-many vehicle/part/
+// engine/fault-code applicability) — one row per (itemId, targetKey) pair,
+// deliberately NOT a cross-product table joining every dimension at once.
+// A query for "applies to fault code P0301 on engine X" does two indexed
+// lookups and intersects in application code — see
+// docs/knowledge-platform/applicability-model.md for the anti-explosion
+// rationale, enforced by service-layer convention (no DB constraint can
+// enforce "don't encode compound rules in one row" — documented instead).
+model KnowledgeItemVehicleApplicability {
+  id              String        @id @default(uuid())
+  itemId          String
+  item            KnowledgeItem @relation(fields: [itemId], references: [id])
+  vehicleId       String?
+  vehicle         Vehicle?      @relation(fields: [vehicleId], references: [id])
+  vehicleModelKey String?
+  conditions      Json?
+
+  @@unique([itemId, vehicleId, vehicleModelKey])
+}
+
+model KnowledgeItemPartApplicability {
+  id              String        @id @default(uuid())
+  itemId          String
+  item            KnowledgeItem @relation(fields: [itemId], references: [id])
+  partId          String?
+  part            Part?         @relation(fields: [partId], references: [id])
+  partCategoryKey String?
+  conditions      Json?
+
+  @@unique([itemId, partId, partCategoryKey])
+}
+
+model KnowledgeItemEngineApplicability {
+  id               String        @id @default(uuid())
+  itemId           String
+  item             KnowledgeItem @relation(fields: [itemId], references: [id])
+  engineCode       String
+  transmissionCode String?
+  conditions       Json?
+
+  @@unique([itemId, engineCode, transmissionCode])
+}
+
+model KnowledgeItemFaultCodeApplicability {
+  id         String        @id @default(uuid())
+  itemId     String
+  item       KnowledgeItem @relation(fields: [itemId], references: [id])
+  faultCode  String
+  conditions Json?
+
+  @@unique([itemId, faultCode])
+}
+
+enum ClaimVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  DISPUTED
+  RETRACTED
+}
+
+// Claim-level provenance (spec §9) — the real mechanism ensuring every
+// technical claim is traceable to an exact quoted substring of its source
+// version's rawContent, not just "this document says so" at the document
+// level (which is all KnowledgeDocument.source/sourceUri give today).
+model KnowledgeClaim {
+  id                 String                   @id @default(uuid())
+  itemId             String
+  item               KnowledgeItem            @relation(fields: [itemId], references: [id])
+  versionId          String
+  version            KnowledgeItemVersion     @relation(fields: [versionId], references: [id])
+  claimText          String
+  claimType          String
+  evidenceQuote      String
+  evidenceLocation   Json?
+  verificationStatus ClaimVerificationStatus  @default(UNVERIFIED)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  confidence         Float                    @default(0.5)
+  createdAt          DateTime                 @default(now())
+
+  conflictsAsA KnowledgeConflict[] @relation("ClaimA")
+  conflictsAsB KnowledgeConflict[] @relation("ClaimB")
+  facts        StructuredFact[]
+
+  @@index([itemId, verificationStatus])
+  @@index([versionId])
+}
+
+enum StructuredFactType {
+  TORQUE_SPEC
+  FLUID_CAPACITY
+  FLUID_TYPE
+  SERVICE_INTERVAL
+  FITMENT
+  ELECTRICAL_SPEC
+  PRESSURE_SPEC
+  CLEARANCE_SPEC
+  PART_DIMENSION
+  WEIGHT_SPEC
+  WARRANTY_TERM
+  DIAGNOSTIC_THRESHOLD
+  LUBRICANT_APPROVAL
+  OTHER
+}
+
+// One polymorphic table with a factType discriminator, not spec §10's
+// literal 14-table enumeration — every fact type shares the identical real
+// shape (value/unit/conditions/applicability/source/confidence); 14
+// near-identical tables would multiply migration/test surface for zero
+// behavioral gain, matching the codebase's existing PartRelationship.evidence:
+// Json precedent. `extractedBy` is the real, structural mechanism enforcing
+// "never rely on an LLM summary for torque/fluid/safety/fitment data" — any
+// LLM_ASSISTED_FLAGGED_FOR_REVIEW row without a real reviewedAt is excluded
+// from the AI-consumer contract at the retrieval-service layer (not the DB
+// layer — see docs/knowledge-platform/structured-facts.md for this named risk).
+model StructuredFact {
+  id            String             @id @default(uuid())
+  itemId        String
+  item          KnowledgeItem      @relation(fields: [itemId], references: [id])
+  versionId     String?
+  version       KnowledgeItemVersion? @relation(fields: [versionId], references: [id])
+  sourceClaimId String?
+  sourceClaim   KnowledgeClaim?    @relation(fields: [sourceClaimId], references: [id])
+  factType      StructuredFactType
+  value         Json
+  unit          String?
+  conditions    Json?
+  confidence    Float              @default(1.0)
+  extractedBy   String
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime           @default(now())
+
+  @@index([itemId, factType])
+}
+
+enum ConflictStatus {
+  OPEN
+  RESOLVED_KEEP_A
+  RESOLVED_KEEP_B
+  RESOLVED_BOTH_VALID_DIFFERENT_SCOPE
+  UNRESOLVED_ESCALATED
+}
+
+model KnowledgeConflict {
+  id             String         @id @default(uuid())
+  claimAId       String
+  claimA         KnowledgeClaim @relation("ClaimA", fields: [claimAId], references: [id])
+  claimBId       String
+  claimB         KnowledgeClaim @relation("ClaimB", fields: [claimBId], references: [id])
+  conflictType   String
+  severity       String?
+  status         ConflictStatus @default(OPEN)
+  resolutionNote String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  detectedAt     DateTime       @default(now())
+
+  @@index([status])
+}
+
+enum KnowledgeSnapshotStatus {
+  BUILDING
+  VALIDATING
+  EVALUATING
+  APPROVED
+  ACTIVE
+  ROLLED_BACK
+  RETIRED
+}
+
+// Immutable Knowledge Snapshot (spec §22) — a NEW, separate model from
+// CatalogueIndexVersion (not reused), same proven build->validate->
+// evaluate->approve->activate->rollback state machine shape, scoped to the
+// broader knowledge domain. Activating this snapshot means flipping the
+// isApproved flag on the KnowledgeDocument rows materialized for the
+// KnowledgeItemVersions in KnowledgeSnapshotItemVersion — mirroring exactly
+// how CatalogueIndexVersionService.activate() already works. See
+// docs/knowledge-platform/knowledge-snapshots.md.
+model KnowledgeSnapshot {
+  id                   String                  @id @default(uuid())
+  versionNumber        Int
+  status               KnowledgeSnapshotStatus @default(BUILDING)
+  itemVersionsIncluded  Int                     @default(0)
+  itemsExcluded         Json?
+  checksum             String?
+  evaluationMetrics    Json?
+  intendedAiConsumers  Json?
+  retentionPolicy      String?
+  builtAt              DateTime                @default(now())
+  validatedAt          DateTime?
+  evaluatedAt          DateTime?
+  approvedById         String?
+  approvedAt           DateTime?
+  activatedAt          DateTime?
+  retiredAt            DateTime?
+
+  itemVersions KnowledgeSnapshotItemVersion[]
+
+  @@unique([versionNumber])
+  @@index([status])
+}
+
+model KnowledgeSnapshotItemVersion {
+  id           String               @id @default(uuid())
+  snapshotId   String
+  snapshot     KnowledgeSnapshot    @relation(fields: [snapshotId], references: [id])
+  itemVersionId String
+  itemVersion  KnowledgeItemVersion @relation(fields: [itemVersionId], references: [id])
+
+  @@unique([snapshotId, itemVersionId])
+}
+
+enum KnowledgeGraphNodeType {
+  KNOWLEDGE_ITEM
+  VEHICLE
+  PART
+  ENGINE
+  FAULT_CODE
+  PROCEDURE_STEP
+  KNOWLEDGE_SOURCE
+  LUBRICANT
+  TOOL
+  TORQUE_SPECIFICATION
+}
+
+enum KnowledgeGraphEdgeType {
+  APPLIES_TO
+  SUPERSEDES
+  CONFLICTS_WITH
+  DERIVED_FROM
+  REFERENCES
+  CAUSED_BY
+  RESOLVED_BY
+  HAS_APPROVAL
+  USES_LUBRICANT
+  FITS
+  HAS_ALTERNATIVE
+  PART_OF_KIT
+  REQUIRES_TOOL
+  REQUIRES_TORQUE
+  SUPPORTED_BY
+  CONTRADICTS
+  SUPERSEDED_BY
+  // DGX Prototype 1.7.2 — Retrieval Intelligence Platform graph-expansion
+  // relationships (spec §15). HAS_ENGINE/HAS_TRANSMISSION are populated
+  // from the existing KnowledgeItemEngineApplicability junction table's
+  // engineCode/transmissionCode fields, not a new node type.
+  HAS_ENGINE
+  HAS_TRANSMISSION
+  RELATED_TO
+}
+
+// A Postgres-relational knowledge graph (spec §23) — 2 tables, not one per
+// node type, per the explicit instruction to prefer relational storage and
+// avoid premature graph-database complexity. refId is a polymorphic
+// reference by convention (targets a different real table depending on
+// nodeType), the same pattern AuditLog.entityType/entityId already uses —
+// not a hard DB FK, since it can't target more than one table. traverse()
+// is deliberately scoped to bounded-depth BFS only (see
+// knowledge-graph.service.ts) — no shortest-path/PageRank-style ranking,
+// a named ceiling to avoid scope creep. See docs/knowledge-platform/knowledge-graph.md.
+model KnowledgeGraphNode {
+  id        String                 @id @default(uuid())
+  nodeType  KnowledgeGraphNodeType
+  refId     String
+  label     String
+  metadata  Json?
+  createdAt DateTime               @default(now())
+
+  outgoingEdges KnowledgeGraphEdge[] @relation("FromNode")
+  incomingEdges KnowledgeGraphEdge[] @relation("ToNode")
+
+  @@unique([nodeType, refId])
+}
+
+model KnowledgeGraphEdge {
+  id         String                 @id @default(uuid())
+  fromNodeId String
+  fromNode   KnowledgeGraphNode     @relation("FromNode", fields: [fromNodeId], references: [id])
+  toNodeId   String
+  toNode     KnowledgeGraphNode     @relation("ToNode", fields: [toNodeId], references: [id])
+  edgeType   KnowledgeGraphEdgeType
+  weight     Float?
+  evidence   Json?
+  createdAt  DateTime               @default(now())
+
+  @@unique([fromNodeId, toNodeId, edgeType])
+  @@index([edgeType])
+}
+
+enum KnowledgeReviewerRole {
+  TECHNICAL_REVIEWER
+  LICENSING_REVIEWER
+  SAFETY_REVIEWER
+  FINAL_APPROVER
+}
+
+enum KnowledgeReviewDecision {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+}
+
+// The one genuinely new "route to reviewer" concept — the review workflow
+// itself reuses KnowledgeItemVersion.status's own state machine directly
+// rather than a separate generic queue table. See
+// docs/knowledge-platform/review-workflow.md.
+model KnowledgeReviewAssignment {
+  id           String                   @id @default(uuid())
+  versionId    String
+  version      KnowledgeItemVersion     @relation(fields: [versionId], references: [id])
+  reviewerRole KnowledgeReviewerRole
+  assignedToId String?
+  decision     KnowledgeReviewDecision?
+  decisionNote String?
+  decidedAt    DateTime?
+  assignedAt   DateTime                 @default(now())
+  // DGX Prototype 1.7.1 — real review batches + dual review + escalation
+  // (spec §20/§22). requiresDualReview only changes how many assignment
+  // rows assignDualReview() creates up front — the existing decide()
+  // "every assigned reviewer must APPROVE" loop already generalizes to N
+  // reviewers correctly and is NOT modified. isHighRisk marks the real
+  // high-risk fact types (torque/safety/lubricant-approval/fitment/VIN/
+  // fluid-quantity/diagnostic/warranty) that require it.
+  reviewBatchId    String?
+  reviewBatch      KnowledgeReviewBatch? @relation(fields: [reviewBatchId], references: [id])
+  isHighRisk       Boolean      @default(false)
+  requiresDualReview Boolean    @default(false)
+  escalatedAt      DateTime?
+  escalationReason String?
+
+  @@index([versionId, reviewerRole])
+  @@index([reviewBatchId])
+}
+
+model KnowledgeReviewBatch {
+  id          String    @id @default(uuid())
+  label       String
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  assignments KnowledgeReviewAssignment[]
+}
+
+// ============================================================================
+// DGX Prototype 1.7.2 — Retrieval Intelligence Platform (spec §§1-25).
+// A new, additive module (src/retrieval-intelligence/) that becomes the
+// authoritative retrieval layer both Catalogue AI and the Knowledge
+// Platform consume internally, behind the RETRIEVAL_INTELLIGENCE_ENABLED
+// flag. Neither consumer's public API/contract changes. See
+// docs/retrieval-intelligence/architecture.md and decision-log.md.
+// ============================================================================
+
+// The 21 query classes from spec §3, verbatim.
+enum RetrievalQueryClass {
+  OEM_PART_NUMBER
+  INTERNAL_ITEM_CODE
+  TECDOC_ARTICLE
+  BARCODE
+  SKU
+  VEHICLE_VIN
+  ENGINE_CODE
+  TRANSMISSION_CODE
+  LUBRICANT_APPROVAL
+  LUBRICANT_PRODUCT
+  VEHICLE_MODEL
+  FAULT_CODE
+  TECHNICAL_PROCEDURE
+  FREE_TEXT_QUESTION
+  MIXED_QUERY
+  SWAHILI
+  ENGLISH
+  MIXED_LANGUAGE
+  TYPO
+  APPROXIMATE_SEARCH
+  UNKNOWN
+}
+
+// The 10 hybrid retrieval modes from spec §9.
+enum RetrievalStrategyMode {
+  IDENTIFIER_ONLY
+  BM25
+  VECTOR
+  HYBRID
+  HYBRID_GRAPH
+  HYBRID_GRAPH_AUTHORITY
+  HYBRID_GRAPH_AUTHORITY_FRESHNESS
+  HYBRID_GRAPH_AUTHORITY_FIELD_BOOST
+  HYBRID_GRAPH_AUTHORITY_STRUCTURED_FACTS
+  HYBRID_GRAPH_AUTHORITY_LTR
+}
+
+// The failure taxonomy from spec §19.
+enum RetrievalFailureType {
+  WRONG_IDENTIFIER
+  WRONG_RANKING
+  MISSING_EMBEDDING
+  MISSING_GRAPH
+  WRONG_SNAPSHOT
+  WRONG_CITATION
+  PERMISSION_ERROR
+  CONFLICT_ERROR
+  FRESHNESS_ERROR
+  NO_RESULT
+  FALSE_RESULT
+}
+
+// One row per real pipeline run (spec §4 stage 16, "evaluation logging").
+// Never hidden — this is the backing store for retrieval observability
+// (spec §18) and failure analysis (spec §19).
+model RetrievalQueryLog {
+  id                  String                @id @default(uuid())
+  queryText           String
+  normalizedQuery     String
+  detectedLanguage    String
+  queryClass          RetrievalQueryClass
+  identifiersDetected Json
+  strategyMode        RetrievalStrategyMode
+  candidateCounts     Json
+  rankingExplanation  Json
+  confidence          Float
+  stageLatenciesMs    Json
+  snapshotId          String?
+  consumerName        String
+  correlationId       String?
+  failureType         RetrievalFailureType?
+  createdAt           DateTime              @default(now())
+
+  @@index([queryClass, createdAt])
+  @@index([consumerName])
+}
+
+// Query Lab (spec §13) persistence — mirrors the existing PromptExperiment
+// convention (versioned, replayable, real; not a new experimentation
+// framework).
+model RetrievalExperiment {
+  id               String    @id @default(uuid())
+  name             String    @unique
+  strategyModeA    RetrievalStrategyMode
+  strategyModeB    RetrievalStrategyMode?
+  embeddingModelA  String?
+  embeddingModelB  String?
+  queryLogIds      Json
+  resultsA         Json
+  resultsB         Json?
+  createdById      String?
+  createdAt        DateTime  @default(now())
+}
+
+// Real, small, defensible alias/terminology table for query normalization
+// (spec §5/§6) — supplier/manufacturer/internal aliases, Swahili
+// terminology, and technician abbreviations. Never invented wholesale to
+// hit a volume target; see docs/retrieval-intelligence/decision-log.md.
+model RetrievalTermAlias {
+  id            String   @id @default(uuid())
+  term          String
+  canonicalTerm String
+  aliasType     String
+  language      String   @default("en")
+  createdAt     DateTime @default(now())
+
+  @@unique([term, aliasType])
+}

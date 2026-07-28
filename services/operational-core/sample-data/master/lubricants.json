@@ -1,0 +1,46 @@
+[
+  {
+    "internalCode": "LUB-ENG-5W30-1L",
+    "brand": "Castrol",
+    "productName": "Castrol EDGE 5W-30 LL Engine Oil 1L",
+    "category": "ENGINE_OIL",
+    "viscosity": "5W-30",
+    "packageSize": 1,
+    "packageUnit": "L",
+    "apiClassification": "SN",
+    "aceaClassification": "C3",
+    "currentCost": 9500,
+    "defaultSellingPrice": 14000,
+    "approvals": [
+      { "oemBrand": "VAG", "approvalCode": "VW 504.00/507.00" },
+      { "oemBrand": "BMW", "approvalCode": "BMW LL-04" }
+    ]
+  },
+  {
+    "internalCode": "LUB-DSG-1L",
+    "brand": "VAG",
+    "productName": "VAG DSG Gearbox Oil G 052 182",
+    "category": "DSG_FLUID",
+    "viscosity": "N/A",
+    "packageSize": 1,
+    "packageUnit": "L",
+    "currentCost": 21000,
+    "defaultSellingPrice": 32000,
+    "approvals": [
+      { "oemBrand": "VAG", "approvalCode": "G 052 182 A2" }
+    ]
+  },
+  {
+    "internalCode": "LUB-COOL-1L",
+    "brand": "BMW",
+    "productName": "BMW Antifreeze Coolant Concentrate",
+    "category": "COOLANT",
+    "packageSize": 1,
+    "packageUnit": "L",
+    "currentCost": 7000,
+    "defaultSellingPrice": 11000,
+    "approvals": [
+      { "oemBrand": "BMW", "approvalCode": "BMW N600 69.0" }
+    ]
+  }
+]

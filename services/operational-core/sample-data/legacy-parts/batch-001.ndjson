@@ -1,0 +1,3 @@
+{"sourceRecordId": "prt-2001", "operation": "UPSERT", "payload": {"oem_no": "11-42-7-566-327", "description": "Oil Filter Element BMW B48 B58", "brand": "BMW", "category": "Filters"}, "sourceTimestamp": "2026-06-01T09:00:00Z", "recordVersion": "1"}
+{"sourceRecordId": "prt-2002", "operation": "UPSERT", "payload": {"oem_no": "11427566327", "description": "Genuine Oil Filter for BMW B48 B58 Engine", "brand": "BMW", "category": "Filters"}, "sourceTimestamp": "2026-06-01T09:01:00Z", "recordVersion": "1"}
+{"sourceRecordId": "prt-2003", "operation": "UPSERT", "payload": {"oem_no": "", "description": "Unknown bracket"}, "sourceTimestamp": "2026-06-01T09:02:00Z", "recordVersion": "1"}

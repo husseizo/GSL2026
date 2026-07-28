@@ -1,0 +1,5 @@
+[
+  { "customerCode": "CUST-1001", "legalName": "Juma Auto Fleet Ltd", "displayName": "Juma Auto Fleet", "customerType": "FLEET", "phone": "+255-71-1111111", "email": "fleet@jumaauto.co.tz", "preferredBranchCode": "DSM01" },
+  { "customerCode": "CUST-1002", "legalName": "Amina Mrema", "displayName": "Amina Mrema", "customerType": "INDIVIDUAL", "phone": "+255-71-2222222" },
+  { "customerCode": "CUST-1003", "legalName": "Northern Highlands Garage Co Ltd", "displayName": "Northern Highlands Garage", "customerType": "GARAGE", "phone": "+255-27-3333333", "preferredBranchCode": "ARU01" }
+]

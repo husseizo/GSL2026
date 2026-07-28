@@ -1,0 +1,26 @@
+# Service Inventory — DGX Prototype 1 Final Acceptance
+
+Real, directly-verified state as of this acceptance pass (2026-07-13, this session). Every row below was confirmed via a real port check (`netstat`), a real process lookup (`tasklist`/`wmic`), or a real HTTP call — nothing here is assumed from documentation.
+
+| Service | Purpose | Status | Host | Port | Base URL | Health endpoint | Auth required |
+|---|---|---|---|---|---|---|---|
+| Operational Core (NestJS backend) | The single API surface for every business/AI module in this platform, including Catalogue AI | **Running** (started this session; not running by default in this environment) | 127.0.0.1 | 3900 | `http://127.0.0.1:3900` | `GET /health` (aggregate), `/health/db`, `/health/redis`, `/health/dgx` | No (health/Swagger public); yes (Bearer JWT or legacy `x-user-role` header) for all business/AI routes |
+| DGX / Ollama inference service | Real local embedding (`nomic-embed-text`) + generation (`llama3`) FastAPI wrapper around Ollama — the only thing allowed to call the models | **Running** | 127.0.0.1 | 8800 | `http://127.0.0.1:8800` | `GET /v1/health` | No (internal-only; not exposed beyond localhost in this environment) |
+| Ollama (native) | The underlying model runtime the FastAPI wrapper proxies to | **Running** | 127.0.0.1 | 11434 | `http://127.0.0.1:11434` | `GET /api/tags` | No (internal; not part of this platform's public surface — never called directly by application code, only by the DGX wrapper) |
+| PostgreSQL (`aios_operational`) | Sole system of record for this platform | **Running** | 127.0.0.1 | 55432 | n/a (DB protocol) | Verified via `GET /health/db` (`SELECT 1`) | DB credentials only |
+| Redis (Memurai, Windows-compatible) | Rate limiting, session/queue support (never a system of record) | **Running** | 127.0.0.1 | 16379 | n/a (Redis protocol) | Verified via `GET /health/redis` (real `PING`) | Redis auth per config |
+| Web Management Portal (instance A) | Executive/Branch/User-Management/System-Health UI, real Vite dev server | **Running** | ::1 (IPv6 loopback) | 5174 | `http://localhost:5174` | n/a (static SPA; relies on backend `/health`) | Browser session (JWT stored client-side after login) |
+| Web Management Portal (instance B) | Same app, a second dev-server instance left running from an earlier session | **Running** (likely stale/duplicate — not stopped, per this phase's "no destructive actions" scope) | ::1 | 5180 | `http://localhost:5180` | same as above | same as above |
+| Branch Gateway | Edge/branch-sync module — a route namespace inside Operational Core, not a separate process | **Running** (as part of the backend above) | 127.0.0.1 | 3900 (shared) | `http://127.0.0.1:3900/branch-gateway/:branchId/...` | `GET /branch-gateway/:branchId/health` (requires a real `branchId`) | Yes |
+| CDC (logical replication) | Real Postgres logical-replication (pgoutput) capability | **Present, not actively streaming** | 127.0.0.1 | 3900 (shared) | `http://127.0.0.1:3900/cdc/...` | n/a — `startReplication()` must be explicitly invoked; not auto-started on boot, and was not started this session | Yes |
+| Prometheus metrics | Real `aios_http_requests_total` and related counters | **Running** (as part of the backend above) | 127.0.0.1 | 3900 (shared) | `http://127.0.0.1:3900/metrics` | n/a (this *is* the health/metrics surface) | No |
+| Grafana | Dashboard visualization for the Prometheus metrics above | **Not deployed** | — | — | — | — | — |
+| Background workers / scheduled jobs | Cron-style scheduled tasks | **None exist** — no `@nestjs/schedule`/`@Cron` usage anywhere in this codebase; every batch operation (baseline runs, corpus builds, evaluations) is invoked on demand via a script, not a standing worker | — | — | — | — | — |
+| Admin Portal (separate from Web Portal) | A distinct admin-only deployment | **Does not exist as a separate app** — user-management/system-health/admin functions are pages within the one Web Management Portal above, not a second deployment | — | — | — | — | — |
+| SAP B1 / Odoo adapters | External-system connectivity | **Adapter code exists, not connected to a live external system this session** — verified previously against mocked contracts (Phase 5) and, where reachable, real read-only source databases (Data Consolidation phase); no live external write-path exists in this platform by design | — | — | — | — | — |
+
+## Why some things are intentionally not exposed
+
+- **Ollama's native port (11434)** is deliberately not part of the platform's public contract — `AiGatewayService`/`DgxClientService` are the only real callers, and only ever call the FastAPI wrapper on 8800, never Ollama directly from application code.
+- **Grafana** was never part of this project's real infrastructure in this environment — Prometheus-format metrics are exposed and scrapable, but no dashboard tool is deployed here. This is an honest gap, not a hidden one.
+- **CDC replication** exists as real, tested code (`cdc.integration-spec.ts` exercises it against a real Postgres logical-replication slot) but is not a standing process — starting it is an explicit operational action, appropriate for a source that should not silently begin streaming production changes.

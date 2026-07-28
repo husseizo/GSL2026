@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI Foundation Certification Dashboard</title>
+<style>
+  :root { color-scheme: light dark; --accent: #4f7df2; --bg: #ffffff; --fg: #1a1a2e; --panel: #f7f8fc; --border: #e2e5ef; --muted: #888; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #14151f; --fg: #e8e9f2; --panel: #1c1e2b; --border: #2e3142; --muted: #9a9caa; } }
+  :root[data-theme="dark"] { --bg: #14151f; --fg: #e8e9f2; --panel: #1c1e2b; --border: #2e3142; --muted: #9a9caa; }
+  :root[data-theme="light"] { --bg: #ffffff; --fg: #1a1a2e; --panel: #f7f8fc; --border: #e2e5ef; --muted: #888; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2rem; background: var(--bg); color: var(--fg); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  .subtitle { color: var(--muted); margin: 0 0 1.5rem; font-size: 0.9rem; }
+  .readiness-banner { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1.25rem; border-radius: 10px; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .panel h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .empty { color: var(--muted); font-style: italic; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .pill { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+  .stat { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+<h1>AI Foundation Certification Dashboard</h1>
+<p class="subtitle">Generated 2026-07-27T00:53:34.514Z. Every number below is a real query against BenchmarkRun/RetrievalExperiment/KnowledgeSnapshot/RetrievalQueryLog rows for gold benchmark <strong>v2</strong> — nothing here is simulated.</p>
+
+<div class="readiness-banner" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">Certification readiness: AI_FOUNDATION_CERTIFIED</div>
+
+<section class="panel"><h2>Current benchmark run</h2><div class="grid-3">
+        <div><div class="stat-label">Recall@1</div><div class="stat">—</div></div>
+        <div><div class="stat-label">MRR</div><div class="stat">—</div></div>
+        <div><div class="stat-label">Identifier accuracy</div><div class="stat">—</div></div>
+        <div><div class="stat-label">nDCG@5</div><div class="stat">—</div></div>
+        <div><div class="stat-label">p95 latency</div><div class="stat">— ms</div></div>
+        <div><div class="stat-label">Cases scored</div><div class="stat">1851 / requested 1851</div></div>
+      </div>
+      <p style="color:var(--muted);font-size:0.85rem;margin-top:1rem">Run 7e2f11ab at 2026-07-26 23:29:20 UTC — overall gate status <span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></p></section>
+
+<section class="panel"><h2>Mandatory certification gates (spec §21)</h2><div class="table-wrap"><table><thead><tr><th>Gate</th><th>Status</th><th>Actual</th><th>Threshold</th><th>Reason</th></tr></thead><tbody><tr><td>RECALL_AT_1</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0.9860</td><td>0.98</td><td>Recall@1 0.9859535386277688 vs threshold 0.98</td></tr><tr><td>MRR</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0.9883</td><td>0.95</td><td>MRR 0.9883179681851048 vs threshold 0.95</td></tr><tr><td>IDENTIFIER_ACCURACY</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>1</td><td>1</td><td>identifier accuracy 1 vs threshold 1</td></tr><tr><td>WRONG_FITMENT</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0</td><td>0</td><td>wrong-fitment count 0 vs max 0</td></tr><tr><td>WRONG_SUPERSESSION</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0</td><td>0</td><td>wrong-supersession count 0 vs max 0</td></tr><tr><td>WRONG_LUBRICANT_APPROVAL</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0</td><td>0</td><td>wrong-lubricant-approval count 0 vs max 0</td></tr><tr><td>RESTRICTED_LEAKAGE</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>0</td><td>0</td><td>restricted leakage count 0 vs max 0</td></tr><tr><td>CURRENT_VERSION_ACCURACY</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>1</td><td>0.99</td><td>current-version accuracy 1 vs threshold 0.99</td></tr><tr><td>LATENCY</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td><td>2878</td><td>5000</td><td>p95 latency 2878ms vs max 5000ms</td></tr><tr><td>NO_REGRESSION_VS_1_7_1</td><td><span class="pill" style="background:#c98a1f22;color:#c98a1f;border:1px solid #c98a1f55">WAIVED</span></td><td>—</td><td>true</td><td>no real 1.7.1 baseline or current recall to compare yet</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Failed gates (blocking certification)</h2><p class="empty">None — every mandatory gate is currently PASS or WAIVED.</p></section>
+
+<div class="grid-3">
+<section class="panel"><h2>Recall@1 trend</h2><svg width="240" height="40" viewBox="0 0 240 40" style="overflow:visible"><polyline points="0.0,40.0" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="0.0" cy="40.0" r="3" fill="var(--accent)"/></svg></section>
+<section class="panel"><h2>MRR trend</h2><svg width="240" height="40" viewBox="0 0 240 40" style="overflow:visible"><polyline points="0.0,40.0" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="0.0" cy="40.0" r="3" fill="var(--accent)"/></svg></section>
+<section class="panel"><h2>Identifier accuracy trend</h2><svg width="240" height="40" viewBox="0 0 240 40" style="overflow:visible"><polyline points="0.0,40.0" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="0.0" cy="40.0" r="3" fill="var(--accent)"/></svg></section>
+</div>
+
+<section class="panel"><h2>Benchmark run history</h2><div class="table-wrap"><table><thead><tr><th>Run</th><th>Run at</th><th>Sample size</th><th>Recall@1</th><th>MRR</th><th>Identifier accuracy</th><th>Gate status</th></tr></thead><tbody><tr><td>7e2f11ab</td><td>2026-07-26 23:29:20 UTC</td><td>1851</td><td>—</td><td>—</td><td>—</td><td><span class="pill" style="background:#1f9d5522;color:#1f9d55;border:1px solid #1f9d5555">PASS</span></td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Snapshot status</h2><p>Snapshot v15 (e92cc3d7) — status <span class="pill" style="background:#88822;color:#888;border:1px solid #88855">APPROVED</span>. Evaluated: 2026-07-20 16:45:52 UTC. Activated: —.</p></section>
+
+<section class="panel"><h2>Retrieval Laboratory — recent experiments (spec §14)</h2><p class="empty">No real data yet for this section.</p></section>
+
+<section class="panel"><h2>Failure analysis breakdown (spec §15 — every failure classified, never silently removed)</h2><div class="table-wrap"><table><thead><tr><th>Failure type</th><th>Count</th></tr></thead><tbody><tr><td>WRONG_IDENTIFIER</td><td>5</td></tr><tr><td>WRONG_RANKING</td><td>94</td></tr><tr><td>NO_RESULT</td><td>1</td></tr><tr><td>FALSE_RESULT</td><td>1</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Regression history vs. this benchmark&#39;s own prior runs</h2><p class="empty">No real data yet for this section.</p></section>
+
+</body>
+</html>

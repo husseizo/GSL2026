@@ -1,0 +1,52 @@
+# Deployment manifest for the DGX AI Platform boundary. Not exercised in
+# this session (no Docker in this sandbox — verified: `docker --version`
+# returns "command not found"). This is a real, valid deployment artifact
+# for wherever Docker (or a real DGX Spark, which ships with a container
+# runtime) is available. See docs/architecture/dgx-deployment.md.
+#
+# Ollama already runs with GPU acceleration automatically on a real DGX
+# Spark (CUDA auto-detected) — nothing here needs to change to pick that up;
+# only the `runtime`/`deploy.resources` block below needs uncommenting for
+# an actual GPU host.
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # Uncomment on a real GPU host (e.g. DGX Spark):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dgx-ai-platform:
+    build: .
+    ports:
+      - "8800:8000"
+    environment:
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      DEFAULT_GENERATION_MODEL: "llama3"
+      DEFAULT_EMBEDDING_MODEL: "nomic-embed-text"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama-data:

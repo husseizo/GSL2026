@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aios
+      POSTGRES_PASSWORD: aios_dev_password
+      POSTGRES_DB: aios_operational
+    ports:
+      - "5432:5432"
+    volumes:
+      - aios_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  aios_postgres_data:

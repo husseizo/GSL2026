@@ -1,0 +1,193 @@
+{
+  "datasetVersion": "v1",
+  "generatedAt": "2026-07-28T06:53:47.225Z",
+  "queryWindow": {
+    "from": "2024-07-28T06:53:47.194Z",
+    "to": "2026-07-28T06:53:47.194Z"
+  },
+  "entries": [
+    {
+      "category": "MULTI_WAREHOUSE",
+      "entityType": "Warehouse",
+      "entityId": "3913bec1-f840-4702-9506-cecb04681a32",
+      "evidence": "code=DSM01-MAIN, isActive=true, capacity=not set"
+    },
+    {
+      "category": "MULTI_WAREHOUSE",
+      "entityType": "Warehouse",
+      "entityId": "40fae781-26d8-40f1-915f-acb6852fcc3c",
+      "evidence": "code=ARU01-MAIN, isActive=true, capacity=not set"
+    },
+    {
+      "category": "MULTI_WAREHOUSE",
+      "entityType": "Warehouse",
+      "entityId": "4e893f42-0ba0-452e-b49f-b8fb9ae0a85c",
+      "evidence": "code=DSM01-GRG, isActive=true, capacity=not set"
+    },
+    {
+      "category": "MULTI_WAREHOUSE",
+      "entityType": "Warehouse",
+      "entityId": "79caf7be-2525-442b-b3e2-827beecdc894",
+      "evidence": "code=DSM01-LUBE, isActive=true, capacity=not set"
+    },
+    {
+      "category": "MULTI_SUPPLIER",
+      "entityType": "Supplier",
+      "entityId": "122d028d-225e-473e-a3cd-c441cbca3c3e",
+      "evidence": "supplierCode=SUP-RARE-01, isActive=true, defaultLeadTimeDays=60"
+    },
+    {
+      "category": "MULTI_SUPPLIER",
+      "entityType": "Supplier",
+      "entityId": "78688f71-7aa2-45b7-9ef7-1d742699e7b5",
+      "evidence": "supplierCode=SUP-LOCAL-01, isActive=true, defaultLeadTimeDays=5"
+    },
+    {
+      "category": "MULTI_SUPPLIER",
+      "entityType": "Supplier",
+      "entityId": "bf747927-e431-4900-a792-ce6ec8f88bcf",
+      "evidence": "supplierCode=SUP-EU-01, isActive=true, defaultLeadTimeDays=35"
+    },
+    {
+      "category": "VARYING_LEAD_TIME",
+      "entityType": "Supplier",
+      "entityId": "122d028d-225e-473e-a3cd-c441cbca3c3e",
+      "evidence": "defaultLeadTimeDays=60"
+    },
+    {
+      "category": "VARYING_LEAD_TIME",
+      "entityType": "Supplier",
+      "entityId": "78688f71-7aa2-45b7-9ef7-1d742699e7b5",
+      "evidence": "defaultLeadTimeDays=5"
+    },
+    {
+      "category": "VARYING_LEAD_TIME",
+      "entityType": "Supplier",
+      "entityId": "bf747927-e431-4900-a792-ce6ec8f88bcf",
+      "evidence": "defaultLeadTimeDays=35"
+    },
+    {
+      "category": "VARYING_SUPPLIER_PERFORMANCE",
+      "entityType": "SupplierMetric",
+      "entityId": "40380366-74d9-4d8d-9c54-939e44ec7c4d",
+      "evidence": "onTimeDeliveryPct=0, avgLeadTimeDays=46.4, dataSufficiency=MEDIUM"
+    },
+    {
+      "category": "VARYING_SUPPLIER_PERFORMANCE",
+      "entityType": "SupplierMetric",
+      "entityId": "9412d82d-b78c-44ec-8d0d-3f473b43bfd1",
+      "evidence": "onTimeDeliveryPct=null, avgLeadTimeDays=null, dataSufficiency=INSUFFICIENT_DATA"
+    },
+    {
+      "category": "VARYING_SUPPLIER_PERFORMANCE",
+      "entityType": "SupplierMetric",
+      "entityId": "b1aa3125-6155-4aa1-8615-254bb4f33817",
+      "evidence": "onTimeDeliveryPct=null, avgLeadTimeDays=null, dataSufficiency=INSUFFICIENT_DATA"
+    },
+    {
+      "category": "HIGH_VOLUME_ITEM",
+      "entityType": "InventoryItemMetric",
+      "entityId": "61c9a7b6-494c-4d60-bf50-4af92c5e87e1",
+      "evidence": "movementClass=MEDIUM_MOVING, qtySold90d=8"
+    },
+    {
+      "category": "HIGH_VOLUME_ITEM",
+      "entityType": "InventoryItemMetric",
+      "entityId": "6db87d29-fff4-43a3-a9df-3b8b34459134",
+      "evidence": "movementClass=FAST_MOVING, qtySold90d=25"
+    },
+    {
+      "category": "LOW_VOLUME_ITEM",
+      "entityType": "InventoryItemMetric",
+      "entityId": "04913a69-345d-43fd-98d2-928892187250",
+      "evidence": "movementClass=SLOW_MOVING, qtySold90d=1"
+    },
+    {
+      "category": "LOW_VOLUME_ITEM",
+      "entityType": "InventoryItemMetric",
+      "entityId": "f04426a9-db96-4cb2-9134-8e2039896816",
+      "evidence": "movementClass=SLOW_MOVING, qtySold90d=1"
+    },
+    {
+      "category": "INTERMITTENT_DEMAND",
+      "entityType": "InventoryItemMetric",
+      "entityId": "0e52eedb-8a90-49ae-bb5f-ff7b94211866",
+      "evidence": "hasSufficientHistory=false, movementClass=NEW_ITEM, historyDays=10"
+    },
+    {
+      "category": "STOCKOUT_RISK",
+      "entityType": "InventoryItemMetric",
+      "entityId": "04913a69-345d-43fd-98d2-928892187250",
+      "evidence": "stockOutRisk=HIGH, daysOfSupply=0"
+    },
+    {
+      "category": "EXCESS_INVENTORY",
+      "entityType": "InventoryItemMetric",
+      "entityId": "08c6de5f-fc15-4ce7-82e5-8100ef42b628",
+      "evidence": "movementClass=DEAD_STOCK, noMovementDays=187"
+    },
+    {
+      "category": "EXCESS_INVENTORY",
+      "entityType": "InventoryItemMetric",
+      "entityId": "0b68e315-fd78-4c57-91e5-efdb965354c9",
+      "evidence": "movementClass=DEAD_STOCK, noMovementDays=187"
+    },
+    {
+      "category": "EXCESS_INVENTORY",
+      "entityType": "InventoryItemMetric",
+      "entityId": "a1933e3f-2599-4cfe-8780-2ea5134ced6f",
+      "evidence": "movementClass=DEAD_STOCK, noMovementDays=248"
+    },
+    {
+      "category": "EXCESS_INVENTORY",
+      "entityType": "InventoryItemMetric",
+      "entityId": "ab2212d1-b878-4cbf-b034-ac6815a50a7d",
+      "evidence": "movementClass=DEAD_STOCK, noMovementDays=187"
+    },
+    {
+      "category": "EXCESS_INVENTORY",
+      "entityType": "InventoryItemMetric",
+      "entityId": "e26a8597-c674-4860-9633-3fd1d4e6d72a",
+      "evidence": "movementClass=DEAD_STOCK, noMovementDays=187"
+    },
+    {
+      "category": "TRANSFER_CANDIDATE",
+      "entityType": "TransferRecommendation",
+      "entityId": "5c374471-3359-4c6b-bbae-33daea31841a",
+      "evidence": "suggestedQuantity=1, status=PENDING"
+    },
+    {
+      "category": "TRANSFER_CANDIDATE",
+      "entityType": "TransferRecommendation",
+      "entityId": "eb8e2fd6-22f2-48cc-b482-bf22eee72ae7",
+      "evidence": "suggestedQuantity=1, status=APPROVED"
+    }
+  ],
+  "coverage": {
+    "MULTI_WAREHOUSE": 4,
+    "MULTI_SUPPLIER": 3,
+    "HIGH_VOLUME_ITEM": 2,
+    "LOW_VOLUME_ITEM": 2,
+    "INTERMITTENT_DEMAND": 1,
+    "STOCKOUT_RISK": 1,
+    "EXCESS_INVENTORY": 5,
+    "TRANSFER_CANDIDATE": 2,
+    "VARYING_LEAD_TIME": 3,
+    "VARYING_SUPPLIER_PERFORMANCE": 3
+  },
+  "recordCounts": {
+    "warehouses": 4,
+    "suppliers": 3,
+    "inventoryItemMetrics": 10,
+    "supplierMetrics": 3,
+    "transferRecommendations": 2,
+    "forecastRuns": 50
+  },
+  "knownLimitations": [
+    "No real inactive supplier exists in this environment (0 of 3 real suppliers). The inactive-supplier Safety Gate is validated by the real, executed Sprint 1 test suite (purchase-recommendation-math.spec.ts, purchase-recommendations.integration-spec.ts) rather than a real business-data case in this dataset — an honest gap, not a fabricated one.",
+    "No real warehouse has a capacity value set (0 of 4). The warehouse-capacity Safety Gate is validated by the real, executed Sprint 1 test suite rather than a real business-data case in this dataset — an honest gap, not a fabricated one.",
+    "Zero real, completed StockTransfer rows exist in this environment. TRANSFER_CANDIDATE coverage (2 entries) is real advisory TransferRecommendation data, not a completed real transfer outcome — a real, honest limitation on the \"real business outcome\" ideal the Certification Standard §20 describes.",
+    "Only 10 real InventoryItemMetric rows exist across all warehouses in this environment — a genuinely small real sample, honestly reported rather than padded with synthetic rows."
+  ],
+  "checksum": "e4f07c6d426fa2851376cd3329925305735c6437b8bfc0437b29bf3b907e9b85"
+}

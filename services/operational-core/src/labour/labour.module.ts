@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { LabourController } from './labour.controller';
+import { LabourService } from './labour.service';
+import { TechnicianTimeLogService } from './technician-time-log.service';
+
+@Module({
+  controllers: [LabourController],
+  providers: [LabourService, TechnicianTimeLogService],
+  exports: [LabourService, TechnicianTimeLogService],
+})
+export class LabourModule {}

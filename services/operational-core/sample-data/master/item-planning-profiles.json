@@ -1,0 +1,8 @@
+[
+  { "itemCode": "12-13-8-616-153", "itemKind": "PART", "safetyStock": 3, "targetCoverageDays": 45, "maxCoverageDays": 120, "minimumOrderQuantity": 10, "defaultSupplierCode": "SUP-EU-01", "criticality": "IMPORTANT" },
+  { "itemCode": "06H-121-026-CQ", "itemKind": "PART", "safetyStock": 1, "targetCoverageDays": 45, "maxCoverageDays": 180, "defaultSupplierCode": "SUP-EU-01", "criticality": "CRITICAL" },
+  { "itemCode": "A2729004000", "itemKind": "PART", "safetyStock": 0, "targetCoverageDays": 30, "maxCoverageDays": 90, "defaultSupplierCode": "SUP-EU-01", "criticality": "NORMAL" },
+  { "itemCode": "LR044360", "itemKind": "PART", "safetyStock": 1, "targetCoverageDays": 30, "maxCoverageDays": 90, "defaultSupplierCode": "SUP-EU-01", "criticality": "IMPORTANT" },
+  { "itemCode": "7PP-907-063-N", "itemKind": "PART", "safetyStock": 0, "targetCoverageDays": 180, "maxCoverageDays": 365, "defaultSupplierCode": "SUP-RARE-01", "criticality": "NORMAL" },
+  { "itemCode": "LUB-ENG-5W30-1L", "itemKind": "LUBRICANT", "safetyStock": 10, "targetCoverageDays": 30, "maxCoverageDays": 90, "minimumOrderQuantity": 20, "packageQuantity": 12, "defaultSupplierCode": "SUP-LOCAL-01", "criticality": "NORMAL" }
+]

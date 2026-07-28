@@ -1,0 +1,5 @@
+[
+  { "supplierCode": "SUP-EU-01", "legalName": "EuroParts GmbH", "displayName": "EuroParts", "currency": "EUR", "paymentTerms": "NET45", "defaultLeadTimeDays": 35 },
+  { "supplierCode": "SUP-LOCAL-01", "legalName": "Dar Lubricants Distributors Ltd", "displayName": "Dar Lubricants Distributors", "currency": "TZS", "paymentTerms": "NET15", "defaultLeadTimeDays": 5 },
+  { "supplierCode": "SUP-RARE-01", "legalName": "Precision OEM Parts SA", "displayName": "Precision OEM Parts", "currency": "EUR", "paymentTerms": "NET60", "defaultLeadTimeDays": 60 }
+]

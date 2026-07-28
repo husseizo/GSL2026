@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.env
+backups/
+backups-test/
+openapi.json
+sdks/
+scripts/.profile-report.json

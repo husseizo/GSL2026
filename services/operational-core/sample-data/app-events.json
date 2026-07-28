@@ -1,0 +1,21 @@
+[
+  { "sourceEventId": "evt-0001", "eventType": "SEARCH", "occurredAt": "2026-07-01T09:00:00Z", "sessionId": "sess-001", "searchQuery": "06H-121-026-CQ", "itemCode": "06H-121-026-CQ", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0002", "eventType": "OUT_OF_STOCK_VIEW", "occurredAt": "2026-07-01T09:00:30Z", "sessionId": "sess-001", "itemCode": "06H-121-026-CQ", "branchCode": "DSM01", "metadata": { "requestedQuantity": 2, "availableQuantity": 0 } },
+  { "sourceEventId": "evt-0003", "eventType": "SEARCH", "occurredAt": "2026-07-03T11:00:00Z", "sessionId": "sess-002", "searchQuery": "water pump EA888", "itemCode": "06H-121-026-CQ", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0004", "eventType": "STOCK_CHECK", "occurredAt": "2026-07-03T11:01:00Z", "sessionId": "sess-002", "itemCode": "06H-121-026-CQ", "branchCode": "DSM01", "metadata": { "requestedQuantity": 3, "availableQuantity": 2 } },
+  { "sourceEventId": "evt-0005", "eventType": "SEARCH", "occurredAt": "2026-07-05T14:00:00Z", "sessionId": "sess-003", "searchQuery": "air suspension compressor discovery sport", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0006", "eventType": "SEARCH", "occurredAt": "2026-07-05T14:05:00Z", "sessionId": "sess-003", "searchQuery": "air suspension compressor discovery sport", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0007", "eventType": "SEARCH", "occurredAt": "2026-07-06T09:20:00Z", "sessionId": "sess-004", "searchQuery": "air suspension compressor discovery sport", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0008", "eventType": "SEARCH", "occurredAt": "2026-07-07T10:15:00Z", "sessionId": "sess-004", "searchQuery": "air suspension compressor discovery sport", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0008b", "eventType": "SEARCH", "occurredAt": "2026-07-07T10:15:30Z", "sessionId": "sess-004", "searchQuery": "air suspension compressor discovery sport", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0009", "eventType": "OUT_OF_STOCK_VIEW", "occurredAt": "2026-07-07T10:16:00Z", "sessionId": "sess-004", "itemCode": "LR044360", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0010", "eventType": "ZERO_RESULT_SEARCH", "occurredAt": "2026-07-02T08:30:00Z", "sessionId": "sess-005", "searchQuery": "brake pad EA211 aftermarket cheap", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0011", "eventType": "QUOTE_CREATED", "occurredAt": "2026-07-09T09:00:00Z", "sessionId": "sess-006", "customerExternalId": "CUST-1002", "itemCode": "LUB-ENG-5W30-1L", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0012", "eventType": "QUOTE_ABANDONED", "occurredAt": "2026-07-09T09:20:00Z", "sessionId": "sess-006", "customerExternalId": "CUST-1002", "itemCode": "LUB-ENG-5W30-1L", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0013", "eventType": "VIN_LOOKUP", "occurredAt": "2026-07-04T12:00:00Z", "sessionId": "sess-007", "vin": "WP0ZZZ99ZKS123456", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0014", "eventType": "PRICE_CHECK", "occurredAt": "2026-07-04T12:01:00Z", "sessionId": "sess-007", "itemCode": "7PP-907-063-N", "branchCode": "DSM01" },
+  { "sourceEventId": "evt-0015", "eventType": "PERMISSION_DENIED", "occurredAt": "2026-07-06T16:00:00Z", "sessionId": "sess-008", "userExternalId": "user-42", "endpoint": "/purchase-recommendations/generate", "branchCode": "ARU01" },
+  { "sourceEventId": "evt-0016", "eventType": "API_ERROR", "occurredAt": "2026-07-06T16:01:00Z", "sessionId": "sess-008", "endpoint": "/sales/sync", "statusCode": 500, "errorCode": "SYNC_TIMEOUT", "errorMessage": "Upstream POS timed out" },
+  { "sourceEventId": "evt-0017", "eventType": "NOT_A_REAL_EVENT_TYPE", "occurredAt": "2026-07-06T16:02:00Z", "sessionId": "sess-009" },
+  { "sourceEventId": "evt-0018", "eventType": "SEARCH", "occurredAt": "not-a-valid-timestamp", "sessionId": "sess-010", "searchQuery": "test" }
+]

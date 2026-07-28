@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI Evaluation Dashboard — DGX Prototype 1.6</title>
+<style>
+  :root { color-scheme: light dark; --accent: #4f7df2; --bg: #ffffff; --fg: #1a1a2e; --panel: #f7f8fc; --border: #e2e5ef; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #14151f; --fg: #e8e9f2; --panel: #1c1e2b; --border: #2e3142; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2rem; background: var(--bg); color: var(--fg); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  .subtitle { color: #888; margin: 0 0 2rem; font-size: 0.9rem; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .panel h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: #888; font-weight: 600; }
+  pre.metrics { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.75rem; max-width: 40ch; }
+  .empty { color: #888; font-style: italic; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>AI Evaluation Dashboard</h1>
+<p class="subtitle">DGX Prototype 1.6 — generated 2026-07-15T17:48:34.501Z. Every number below is a real query against BenchmarkRun/PromptExperiment/AiFeedback rows — nothing here is simulated.</p>
+
+<section class="panel"><h2>AI Quality (one row per category — never blended)</h2><div class="table-wrap"><table><thead><tr><th>Category</th><th>Cases evaluated</th><th>Last run</th><th>Latest metrics</th></tr></thead><tbody><tr><td>RETRIEVAL</td><td>100</td><td>2026-07-15 17:47:25 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;mrr&quot;:1,&quot;ndcgAt5&quot;:1,&quot;recallAt1&quot;:1,&quot;recallAt3&quot;:1,&quot;recallAt5&quot;:1,&quot;casesScored&quot;:100,&quot;exactNumberPreservationRate&quot;:1},&quot;category&quot;:&quot;RETRIEVAL&quot;}</pre></td></tr><tr><td>GENERATION</td><td>3</td><td>2026-07-15 17:48:22 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;citation&quot;:{&quot;recall&quot;:1,&quot;precision&quot;:1,&quot;casesScored&quot;:0,&quot;correctness&quot;:1,&quot;completeness&quot;:1,&quot;wrongCitationCount&quot;:0,&quot;brokenCitationCount&quot;:0,&quot;missingCitationCount&quot;:0},&quot;casesScored&quot;:3,&quot;hallucination&quot;:{&quot;casesScored&quot;:0,&quot;invalidOemRate&quot;:0,&quot;invalidFitmentRate&quot;:0,&quot;invalidCitationRate&quot;:0,&quot;invalidCompatibilityRate&quot;:0,&quot;overallHallucinationRate&quot;:0,&quot;unsupportedDiagnosisRate&quot;:0,&quot;unsupportedEquivalenceRate&quot;:0,&quot;invalidLubricantApprovalRate&quot;:0},&quot;avgGroundedness&quot;:0.1429,&quot;avgUnsupportedClaimRate&quot;:0,&quot;structuredOutputValidityRate&quot;:1},&quot;category&quot;:&quot;GENERATION&quot;}</pre></td></tr><tr><td>SAFETY</td><td>3</td><td>2026-07-15 17:37:49 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:3,&quot;refusalAccuracy&quot;:1,&quot;secretDisclosureCount&quot;:0},&quot;category&quot;:&quot;SAFETY&quot;}</pre></td></tr><tr><td>SECURITY</td><td>2</td><td>2026-07-15 17:40:42 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:2,&quot;policyBypassAccuracy&quot;:0,&quot;permissionLeakageCount&quot;:0},&quot;category&quot;:&quot;SECURITY&quot;}</pre></td></tr><tr><td>PERFORMANCE</td><td>35</td><td>2026-07-15 17:47:24 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:35,&quot;successRate&quot;:1},&quot;category&quot;:&quot;RELIABILITY&quot;}</pre></td></tr><tr><td>SWAHILI</td><td>3</td><td>2026-07-15 17:42:24 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;recallAt1&quot;:0.3333,&quot;casesScored&quot;:6,&quot;avgGroundedness&quot;:0.0714,&quot;exactNumberPreservationRate&quot;:0.3333333333333333},&quot;category&quot;:&quot;SWAHILI&quot;}</pre></td></tr><tr><td>ENGLISH</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>MIXED_LANGUAGE</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>REASONING</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>CONFLICT_DETECTION</td><td>12</td><td>2026-07-15 17:36:12 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:12,&quot;conflictDetectionAccuracy&quot;:1},&quot;category&quot;:&quot;CONFLICT_DETECTION&quot;}</pre></td></tr><tr><td>PERMISSION_ENFORCEMENT</td><td>500</td><td>2026-07-15 17:36:12 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:500,&quot;leakageCount&quot;:0,&quot;enforcementAccuracy&quot;:1},&quot;category&quot;:&quot;PERMISSION_ENFORCEMENT&quot;}</pre></td></tr><tr><td>PROMPT_INJECTION</td><td>3</td><td>2026-07-15 17:37:49 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;casesScored&quot;:3,&quot;refusalAccuracy&quot;:1},&quot;category&quot;:&quot;PROMPT_INJECTION&quot;}</pre></td></tr><tr><td>LATENCY</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>RELIABILITY</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>REGRESSION</td><td>0</td><td>—</td><td><pre class="metrics">{}</pre></td></tr><tr><td>PRODUCTION_READINESS</td><td>6</td><td>2026-07-15 17:47:24 UTC</td><td><pre class="metrics">{&quot;metrics&quot;:{&quot;passRate&quot;:1,&quot;casesScored&quot;:6,&quot;itemsPassed&quot;:6,&quot;itemsChecked&quot;:6},&quot;category&quot;:&quot;PRODUCTION_READINESS&quot;}</pre></td></tr></tbody></table></div></section>
+
+<div class="grid-2">
+<section class="panel"><h2>Retrieval trend (recallAt1)</h2><svg width="200" height="40" viewBox="0 0 200 40" style="overflow:visible"><polyline points="0.0,0.0 66.7,0.0 133.3,0.0 200.0,0.0" fill="none" stroke="#4f7df2" stroke-width="2"/></svg></section>
+<section class="panel"><h2>Generation trend (avgGroundedness)</h2><svg width="200" height="40" viewBox="0 0 200 40" style="overflow:visible"><polyline points="0.0,34.3 40.0,34.3 80.0,34.3 120.0,34.3 160.0,34.3 200.0,34.3" fill="none" stroke="#4f7df2" stroke-width="2"/></svg></section>
+</div>
+
+<section class="panel"><h2>Retrieval</h2><div class="table-wrap"><table><thead><tr><th>Run</th><th>recallAt1</th><th>Run at</th></tr></thead><tbody><tr><td>d34af4f4</td><td>1</td><td>2026-07-15 17:47:25 UTC</td></tr><tr><td>ad8e6c61</td><td>1</td><td>2026-07-15 17:36:12 UTC</td></tr><tr><td>36e39c1f</td><td>1</td><td>2026-07-15 17:19:22 UTC</td></tr><tr><td>af0a7be6</td><td>1</td><td>2026-07-15 17:08:04 UTC</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Generation</h2><div class="table-wrap"><table><thead><tr><th>Run</th><th>avgGroundedness</th><th>citation.correctness</th><th>Run at</th></tr></thead><tbody><tr><td>51a81439</td><td>0.1429</td><td>1</td><td>2026-07-15 17:48:22 UTC</td></tr><tr><td>829efbfd</td><td>0.1429</td><td>1</td><td>2026-07-15 17:47:53 UTC</td></tr><tr><td>5f9a4f01</td><td>0.1429</td><td>1</td><td>2026-07-15 17:37:49 UTC</td></tr><tr><td>3c10d4bf</td><td>0.1429</td><td>1</td><td>2026-07-15 17:20:21 UTC</td></tr><tr><td>1c5d26b6</td><td>0.1429</td><td>1</td><td>2026-07-15 17:19:51 UTC</td></tr><tr><td>248e5874</td><td>0.1429</td><td>1</td><td>2026-07-15 17:09:37 UTC</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Safety</h2><div class="table-wrap"><table><thead><tr><th>Run</th><th>refusalAccuracy</th><th>Run at</th></tr></thead><tbody><tr><td>70a52869</td><td>1</td><td>2026-07-15 17:37:49 UTC</td></tr><tr><td>82054e7a</td><td>1</td><td>2026-07-15 17:09:37 UTC</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Latency</h2><p class="empty">No real data yet for this section.</p></section>
+
+<section class="panel"><h2>Experiments</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th>Arms</th><th>Winner arm</th></tr></thead><tbody><tr><td>verify-suite-1784136889139-prompt-experiment</td><td>COMPLETED</td><td>2</td><td>5f447082</td></tr><tr><td>verify-suite-1784135208872-prompt-experiment</td><td>COMPLETED</td><td>2</td><td>97b167cf</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Benchmark trends (run counts over time, per category)</h2><div class="table-wrap"><table><thead><tr><th>Category</th><th>Run count</th><th>First run</th><th>Last run</th></tr></thead><tbody><tr><td>RETRIEVAL</td><td>4</td><td>2026-07-15 17:08:04 UTC</td><td>2026-07-15 17:47:25 UTC</td></tr><tr><td>GENERATION</td><td>6</td><td>2026-07-15 17:09:37 UTC</td><td>2026-07-15 17:48:22 UTC</td></tr><tr><td>SAFETY</td><td>2</td><td>2026-07-15 17:09:37 UTC</td><td>2026-07-15 17:37:49 UTC</td></tr><tr><td>SECURITY</td><td>2</td><td>2026-07-15 17:12:29 UTC</td><td>2026-07-15 17:40:42 UTC</td></tr><tr><td>PERFORMANCE</td><td>6</td><td>2026-07-15 17:19:21 UTC</td><td>2026-07-15 17:47:24 UTC</td></tr><tr><td>SWAHILI</td><td>2</td><td>2026-07-15 17:14:12 UTC</td><td>2026-07-15 17:42:24 UTC</td></tr><tr><td>ENGLISH</td><td>0</td><td>—</td><td>—</td></tr><tr><td>MIXED_LANGUAGE</td><td>0</td><td>—</td><td>—</td></tr><tr><td>REASONING</td><td>0</td><td>—</td><td>—</td></tr><tr><td>CONFLICT_DETECTION</td><td>2</td><td>2026-07-15 17:08:04 UTC</td><td>2026-07-15 17:36:12 UTC</td></tr><tr><td>PERMISSION_ENFORCEMENT</td><td>2</td><td>2026-07-15 17:08:04 UTC</td><td>2026-07-15 17:36:12 UTC</td></tr><tr><td>PROMPT_INJECTION</td><td>2</td><td>2026-07-15 17:09:37 UTC</td><td>2026-07-15 17:37:49 UTC</td></tr><tr><td>LATENCY</td><td>0</td><td>—</td><td>—</td></tr><tr><td>RELIABILITY</td><td>0</td><td>—</td><td>—</td></tr><tr><td>REGRESSION</td><td>0</td><td>—</td><td>—</td></tr><tr><td>PRODUCTION_READINESS</td><td>2</td><td>2026-07-15 17:19:21 UTC</td><td>2026-07-15 17:47:24 UTC</td></tr></tbody></table></div></section>
+
+<section class="panel"><h2>Regression history</h2><p class="empty">No real data yet for this section.</p></section>
+
+<section class="panel"><h2>Pilot quality (real human feedback, production)</h2><p>Acceptance rate: <strong>100%</strong> across 3 real AiFeedback rows.</p></section>
+
+</body>
+</html>

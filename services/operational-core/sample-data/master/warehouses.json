@@ -1,0 +1,6 @@
+[
+  { "branchCode": "DSM01", "code": "DSM01-MAIN", "name": "Dar es Salaam Main Store", "warehouseType": "MAIN", "isSellable": true },
+  { "branchCode": "DSM01", "code": "DSM01-LUBE", "name": "Dar es Salaam Lubricants Store", "warehouseType": "LUBRICANTS", "isSellable": true },
+  { "branchCode": "DSM01", "code": "DSM01-GRG", "name": "Dar es Salaam Garage Store", "warehouseType": "GARAGE", "isSellable": false, "isServiceWarehouse": true },
+  { "branchCode": "ARU01", "code": "ARU01-MAIN", "name": "Arusha Main Store", "warehouseType": "RETAIL", "isSellable": true }
+]

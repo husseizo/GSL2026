@@ -1,0 +1,5 @@
+[
+  { "organizationCode": "GSL", "code": "DSM01", "name": "Dar es Salaam - Nyerere Road", "address": "Nyerere Road, Dar es Salaam", "phone": "+255-22-1000001", "timezone": "Africa/Dar_es_Salaam" },
+  { "organizationCode": "GSL", "code": "ARU01", "name": "Arusha Branch", "address": "Sokoine Road, Arusha", "phone": "+255-27-2000002", "timezone": "Africa/Dar_es_Salaam" },
+  { "organizationCode": "GSL", "code": "MBY01", "name": "Mbeya Branch", "address": "Uyole, Mbeya", "phone": "+255-25-3000003", "timezone": "Africa/Dar_es_Salaam" }
+]
