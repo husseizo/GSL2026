@@ -1,0 +1,7 @@
+# Local/loopback addresses referenced in runtime documentation — never
+# reachable from a CI runner, not a real broken link.
+http://127.0.0.1
+https://127.0.0.1
+http://localhost
+https://localhost
+http://0.0.0.0

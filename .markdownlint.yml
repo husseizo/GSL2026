@@ -1,0 +1,26 @@
+# Deliberately permissive config for a large, pre-existing prose-heavy
+# documentation corpus (1000+ files spanning multiple historical phases).
+# The goal is to catch real structural problems (broken heading hierarchy,
+# malformed lists/tables) without flooding CI with stylistic-only findings
+# across documents this workflow did not author.
+default: true
+
+# Long lines are normal in this corpus's prose paragraphs and tables.
+MD013: false
+
+# Multiple historical documents use inline HTML intentionally (e.g. line
+# breaks inside table cells) — do not flag it.
+MD033: false
+
+# This corpus intentionally uses "###" sub-headers as em-dash-style
+# taglines directly under an H1 in several documents (e.g. README.md) —
+# don't enforce strict incremental heading levels globally.
+MD001: false
+
+# First-line-must-be-H1 doesn't hold for every included/partial doc.
+MD041: false
+
+# Duplicate heading text across different documents (e.g. "Notes",
+# "Context") is normal and not ambiguous within its own file.
+MD024:
+  siblings_only: true

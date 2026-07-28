@@ -1,0 +1,31 @@
+name: Documentation Lint
+
+# Documentation-only workflow — deliberately independent of application
+# build/test workflows. Runs only when Markdown content changes, so it
+# never blocks or slows down application CI.
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".markdownlint.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**/*.md"
+      - ".markdownlint.yml"
+  workflow_dispatch: {}
+
+jobs:
+  markdownlint:
+    name: markdownlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          globs: |
+            **/*.md
+            !**/node_modules/**
+            !**/dist/**

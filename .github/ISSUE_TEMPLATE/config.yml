@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/husseizo/GSL2026/security/advisories/new
+    about: Do not report security vulnerabilities as a public issue — use private reporting instead. See SECURITY.md.
+  - name: General Discussion
+    url: https://github.com/husseizo/GSL2026/discussions
+    about: For open-ended discussion rather than a specific bug/feature/question, use Discussions (see docs/github-discussions.md).
