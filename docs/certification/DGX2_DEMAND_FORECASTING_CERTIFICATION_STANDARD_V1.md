@@ -19,6 +19,8 @@
 
 This is not an implementation guide and not a sprint report. It is the permanent evaluation standard — the thing a real certification run is measured against, the same way `scripts/verify-ai-foundation-certification.ts` and the AI Foundation's quality gates are the real, executed standard behind `AI_FOUNDATION_CERTIFIED`. No forecasting release may claim any level of trust described in this document without a real, executed, evidence-based certification run against it.
 
+> **Status update (non-invasive, added without altering this Standard's rules, thresholds, or scoring):** the "Certification status" row above was accurate as of this document's original (v1.0) writing. This Standard has since been amended additively — see [`DGX2_CERTIFICATION_STANDARD_AMENDMENT_V1_1.md`](DGX2_CERTIFICATION_STANDARD_AMENDMENT_V1_1.md) — and two real certification runs have been executed under it (v1.1), both returning verdict `NOT_READY`. For the current, authoritative record, see [`docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`](../execution/DGX2_PHASE_A_BASELINE_1_0.md).
+
 ---
 
 ## 2. Purpose

@@ -6,6 +6,8 @@
 
 > This is an execution plan, not an architecture document. It does not modify, and remains strictly subordinate to, every frozen Phase I document (`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md`, `AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`, `AIOS_ENTERPRISE_ROADMAP_V1.md`, `AIOS_REFERENCE_ARCHITECTURE_V1.md`, `DGX_2_DEMAND_FORECASTING_SPECIFICATION_V1.md`, `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`) and the real, evidence-based implementation assessment that preceded this document. Every task, gap, and priority named below is drawn directly from that assessment — nothing here is a new finding.
 
+> **Historical record**: this document is the pre-Sprint-1 execution plan and reflects DGX 2.0's status *before* Sprints 1-4 and Remediation Cycles 1-2 were carried out. All four sprints and both remediation cycles referenced below as planned/future work have since been executed exactly as sequenced here, ending in two real certification runs (verdict `NOT_READY` both times) and a closed Phase A. For the current, authoritative status, see [`docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`](DGX2_PHASE_A_BASELINE_1_0.md).
+
 ---
 
 ## 1. Executive Summary

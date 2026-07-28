@@ -21,6 +21,8 @@
 
 **This document is not a sprint report, a prototype proposal, a feature request, or an implementation note.** It is the permanent standard that governs every past, present, and future Demand Forecasting implementation in AIOS. Where real, already-implemented functionality exists in the repository, this document says so explicitly and cites it. Where a section describes future or conceptual work, this document says that explicitly too. The two are never to be confused.
 
+> **Status update (non-invasive, added without altering any content above or below):** the "Certification dependency" row above was accurate as of this document's original writing. Since then, DGX 2.0 Phase A has completed two real certification runs under `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md` (amended to v1.1) — both returned `NOT_READY` — and Phase A implementation is now closed. For the current, authoritative status, see [`docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`](../execution/DGX2_PHASE_A_BASELINE_1_0.md). This specification's own rules and content remain unchanged and in force.
+
 ---
 
 ## 2. Read This Before Building Forecasting
@@ -466,6 +468,8 @@ Permanent rules for Demand Forecasting, non-negotiable without a formal ADR:
 | Human Trust | Structured, real feedback from procurement/warehouse/branch users on whether recommendations are actually useful and understandable. |
 
 Until a real certification cycle against these categories is performed and documented (following the same evidence-based, executed-step discipline as `scripts/verify-ai-foundation-certification.ts`), this capability's readiness status is **NOT YET CERTIFIED**, regardless of how much of Phase A is already real and working.
+
+> **Historical note**: this section describes the certification categories as originally specified. Two real certification cycles have since been executed against these categories (via `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`) — both returned verdict `NOT_READY`, which remains distinct from "not yet evaluated." See [`docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`](../execution/DGX2_PHASE_A_BASELINE_1_0.md) for the current, authoritative record.
 
 ---
 

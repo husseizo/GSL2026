@@ -117,7 +117,7 @@ flowchart TB
     FOUND["AI Foundation\n(Implemented, Certified)"]
 
     subgraph L5["Capability Layer"]
-        DGX2["DGX 2.0 — Demand Forecasting\nStatus: Specified;\nPhase A baseline Partially Implemented;\nNOT yet Certified"]
+        DGX2["DGX 2.0 — Demand Forecasting\nStatus: Phase A Implemented and Closed;\nTwo certification runs completed (NOT_READY);\nManual operational model"]
         DGX3["DGX 3.0 — Predictive Maintenance\nStatus: Concept"]
         DGX4["DGX 4.0 — Technician Copilot\nStatus: Concept"]
         DGX5["DGX 5.0 — Customer Intelligence\nStatus: Concept"]
@@ -135,7 +135,7 @@ Every capability sits at the same architectural depth — directly on top of the
 
 | Capability | Status |
 |---|---|
-| DGX 2.0 — Demand Forecasting | **Specified.** Real classical-statistical baseline (`forecasting/`, `inventory-analytics/`, `purchase-recommendations/`, `transfer-recommendations/`, `lost-sales/`, `supplier-analytics/`) is **Partially Implemented**. **Not yet Certified** — no real certification run has been executed against `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`. |
+| DGX 2.0 — Demand Forecasting | **Phase A Implemented and Closed** (frozen baseline `DGX2-PHASE-A-BASELINE-1.0`, `docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`). Real classical-statistical baseline (`forecasting/`, `inventory-analytics/`, `purchase-recommendations/`, `transfer-recommendations/`, `lost-sales/`, `supplier-analytics/`). **Two real certification runs executed** against `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md` (v1.1) — both `NOT_READY`. Operating under the Manual operational model, owned by Business Operations. **Not yet Certified** (Governance Standard §6, Level 4) — a certification run occurring is not sufficient; it must also pass. |
 | DGX 3.0 — Predictive Maintenance | **Concept.** Named in the Foundation's transition rule only; no specification exists. |
 | DGX 4.0 — Technician Copilot | **Concept.** |
 | DGX 5.0 — Customer Intelligence | **Concept.** |
