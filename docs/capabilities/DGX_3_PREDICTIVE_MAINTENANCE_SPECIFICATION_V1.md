@@ -10,10 +10,12 @@
 |---|---|
 | Document | DGX 3.0 Predictive Maintenance Specification v1.0 |
 | Capability | DGX 3.0 — Predictive Maintenance |
-| Current lifecycle stage | Specification Draft |
-| Target lifecycle stage after approval | Specified (Capability Governance Standard §6, Level 1) — **conditional on formal review approval; not yet reached; this document alone does not advance the lifecycle stage** |
+| Current lifecycle stage | **Specified** (Capability Governance Standard §6, Level 1) — achieved through Specification Formal Review #1, condition resolution (CR-001 through CR-005), and final closure approval |
+| Target lifecycle stage after approval | Specified — achieved through Formal Review #1, condition resolution, and final closure approval |
+| Capability maturity | **Specified** |
 | Program chapter | Chapter 3 |
-| Status | **DRAFT — NOT AUTHORIZED FOR IMPLEMENTATION** |
+| Status | **APPROVED SPECIFICATION — ENGINEERING NOT AUTHORIZED** |
+| Engineering authorization | **NOT AUTHORIZED** — advancing to Specified does not authorize engineering; `DGX3-ADR-0001` and the remaining §50 pre-engineering gates must still be satisfied first |
 | Architecture authority | AIOS Architecture |
 | Business authority | Not yet assigned — no approved owner exists in any reviewed document |
 | Engineering authority | Not yet assigned — no approved owner exists in any reviewed document |
@@ -22,7 +24,18 @@
 | Supersedes | None |
 | Authoritative dependencies | [`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md`](../architecture/AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md), [`AIOS_REFERENCE_ARCHITECTURE_V1.md`](../architecture/AIOS_REFERENCE_ARCHITECTURE_V1.md), [`AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`](../governance/AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md), [`AIOS_ENTERPRISE_ROADMAP_V1.md`](../strategy/AIOS_ENTERPRISE_ROADMAP_V1.md); [`DGX_2_DEMAND_FORECASTING_SPECIFICATION_V1.md`](DGX_2_DEMAND_FORECASTING_SPECIFICATION_V1.md), [`DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`](../certification/DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md), [`DGX2_CERTIFICATION_STANDARD_AMENDMENT_V1_1.md`](../certification/DGX2_CERTIFICATION_STANDARD_AMENDMENT_V1_1.md), and [`DGX2_PHASE_A_BASELINE_1_0.md`](../execution/DGX2_PHASE_A_BASELINE_1_0.md) as the sibling-capability governance precedent this document follows in structure and discipline — none of these is a technical dependency of DGX 3.0. |
 
-**This document is a specification, not an implementation plan, a pilot proposal, or a production authorization.** No application source code, database schema, migration, API, or dataset may be created, modified, or implied as already existing beyond what this document explicitly cites as real and verified. Every claim about existing repository content in this document was checked directly against the repository at the effective date above; every forward-looking statement is labeled `ASSUMPTION`, `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN`, or `TO_BE_APPROVED_IN_CERTIFICATION_STANDARD` where a real answer does not yet exist.
+**This document is now an approved specification, not an implementation plan, a pilot proposal, or a production authorization.** No application source code, database schema, migration, API, or dataset may be created, modified, or implied as already existing beyond what this document explicitly cites as real and verified. Every claim about existing repository content in this document was checked directly against the repository at the effective date above; every forward-looking statement is labeled `ASSUMPTION`, `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN`, or `TO_BE_APPROVED_IN_CERTIFICATION_STANDARD` where a real answer does not yet exist.
+
+### Approval History
+
+1. **Draft commit**: `fc1986abe2c2cf3b6f59623f898eb812f8255855`
+2. **Formal Review #1** (`docs/reviews/DGX3_SPECIFICATION_FORMAL_REVIEW_1.md`): `APPROVED_WITH_CONDITIONS`
+3. **Condition resolution**: `CR-001` through `CR-005` resolved (see Appendix A)
+4. **Final closure verdict**: `APPROVED_AS_SPECIFIED`
+5. **Engineering authorization**: `NOT AUTHORIZED`
+6. **Next mandatory architecture gate**: `DGX3-ADR-0001` before any Implemented-stage engineering begins (§49, §50)
+
+This history is append-only. It does not authorize implementation, certification, pilot, or production activity, and does not resolve `DGX3-ADR-0001`.
 
 ---
 
@@ -53,7 +66,7 @@ This specification deliberately avoids claims of the following kind, none of whi
 ## 2. Business Problem
 
 **Observed current problems** (confirmed real, from repository evidence):
-- Repeat workshop visits for the same or a related issue are already a tracked, real concern — `vehicle-lifecycle/repeat-repair-math.ts` exists specifically to detect them deterministically (same complaint, same DTC, same part, same system category), and `GarageJob.repeatRepairFlags` is a real, persisted relation. The existence of this code is itself evidence that repeat repairs are a known, real operational problem today.
+- Repeat workshop visits for the same or a related issue are already a tracked, real concern — `vehicle-lifecycle/repeat-repair-math.ts` exists specifically to detect them deterministically (same complaint, same DTC, same part, same system category), and `GarageJob.repeatRepairFlags` is a real, persisted relation backed by a real, currently-operating human review/resolution workflow, not merely a passive relation: each `RepeatRepairFlag` carries a real `status` (`POSSIBLE` → `CONFIRMED` / `WARRANTY_CANDIDATE` / `DISMISSED`) and real `resolvedById`/`resolvedAt`/`note` fields, and a real, existing controller endpoint lets a Workshop Supervisor resolve a flag, writing a real `AuditLog` entry in the process. `RepeatRepairFlag` and this existing review/resolution workflow are real Operational Core capabilities today — DGX 3.0 may consume their governed outputs as evidence but does not automatically own, redefine, or replace that workflow (§9, §49 `DGX3-ADR-0001`). The existence of this code and workflow is itself evidence that repeat repairs are a known, real operational problem today.
 - Maintenance risk is currently assessed only via a simple, deterministic, evidence-count-based scoring system (`twin-intelligence-math.ts`'s `computeMaintenanceRiskScore`/`computeSystemRisks`) — real, but limited to counting same-system events in a fixed trailing 365-day window with a linear scoring formula; it does not model time-to-event, does not use mileage as an input signal, and has no formal calibration or certification.
 - Diagnostic trouble codes are captured with structure (`DiagnosticCode.code`/`source`/`freezeFrame`) but, per that service's own code comment, are stored with "no AI interpretation of DTCs" — a real, current, explicitly acknowledged gap.
 
@@ -144,7 +157,7 @@ No role above may have a repair, warranty, or customer-charging decision delegat
 | Ignition-system degradation | **Deferred** | — | — | Falls under `ENGINE` classification only | — | — | — | — | — |
 | Charging-system risk | **Deferred** (folded conceptually into battery/electrical, §6 above) | — | — | — | — | — | — | — | — |
 | Recurring DTC pattern risk | **Included in Initial Specification** | Does this vehicle show a recurring diagnostic-code pattern? | Prioritize investigation | Real `DiagnosticCode.code` history per vehicle (`listCodeHistoryForVehicle` already exists) | Confidence scales with real code-history depth | Technician | DTC meaning itself is not interpreted (§4) | Unneeded investigation | Missed recurring fault |
-| Repeat-repair risk | **Included in Initial Specification** — already real, deterministic (`repeat-repair-math.ts`); DGX 3.0's role is to govern and extend it, not reinvent it | Is this job related to a prior, unresolved issue? | Flag for supervisor review | Real `RepeatRepairFlag` | Deterministic, not probabilistic, in current form | Workshop Supervisor | Matching logic is exact-string/ID based, not fuzzy (a real, current limitation) | Unneeded flag | Missed genuine repeat issue |
+| Repeat-repair risk | **Included in Initial Specification** — already real, deterministic (`repeat-repair-math.ts`); DGX 3.0's role is to govern and extend it, not reinvent it | Is this job related to a prior, unresolved issue? | Flag for supervisor review and resolution — a real, existing, already-operating workflow (§9) | Real `RepeatRepairFlag`, including its real status/resolution workflow | Deterministic, not probabilistic, in current form | Workshop Supervisor | Matching logic is exact-string/ID based, not fuzzy (a real, current limitation) | Unneeded flag | Missed genuine repeat issue |
 | Vehicle-level maintenance risk score | **Included in Initial Specification** — already real, deterministic (`computeMaintenanceRiskScore`); DGX 3.0's role is to govern, certify, and extend it | What is this vehicle's overall maintenance risk? | Prioritize attention | Real system-risk aggregation | Confidence gated by real job count (`computeOverallConfidence`) | Service Advisor | Existing formula is a simple weighted average, not calibrated (§14) | Wasted attention | Missed high-risk vehicle |
 | Component-level maintenance risk score | **Deferred** | — | — | No real `Component` entity exists in the schema today (confirmed gap, §9) | — | — | — | — | — |
 | Fleet maintenance prioritization | **Deferred to Phase B/C** — a real, valuable extension of the vehicle-level score, but requires a fleet-aggregation view not yet specified (§42) | — | — | — | — | — | — | — | — |
@@ -160,7 +173,7 @@ No role above may have a repair, warranty, or customer-charging decision delegat
 - Vehicle maintenance timeline (real: `vehicle-timeline.service.ts` already exists)
 - Mileage- and date-based service risk (real: `mileageAtCheckIn` on `GarageJob`)
 - Service-history completeness (real: derivable from `GarageJob` history per vehicle)
-- Recurring repair detection (real: `repeat-repair-math.ts`, `RepeatRepairFlag`)
+- Recurring repair detection (real: `repeat-repair-math.ts`, `RepeatRepairFlag` and its real, existing status/resolution workflow — §9)
 - DTC recurrence (real: `DiagnosticCode` history per vehicle)
 - Battery health indicators (real evidence limited to complaint/DTC recurrence classified `ELECTRICAL` — no dedicated battery-test data source; confidence must reflect this honestly)
 - Brake maintenance indicators (real evidence via `BRAKE` classification)
@@ -195,6 +208,7 @@ Every entity below is **conceptual** — none is created, migrated, or implied t
 | Mileage Source | Trust classification of a mileage reading | Conceptual | DGX 3.0 (proposed) | Data Steward | Yes | Conceptual — no real "source" classification exists today; every real reading currently comes from the same single point (check-in) |
 | Service Event | A real maintenance/service occurrence | GarageJob | Operational Core | Data Steward | Yes | **Real** — modeled as a `GarageJob` with appropriate line items; no dedicated `ServiceEvent` entity distinct from a job exists |
 | Repair Order | A real, closed workshop job | GarageJob | Operational Core | Data Steward | Yes | **Real** — `GarageJob` itself, with `status`/`closedAt` |
+| Repeat-Repair Flag | A real, human-reviewed flag linking a job to a possibly related prior issue | GarageJob domain (`vehicle-lifecycle`) | Operational Core | Data Steward | Yes | **Real, existing, and operationally mature** — `RepeatRepairFlag` has a real `status` lifecycle (`POSSIBLE`/`CONFIRMED`/`WARRANTY_CANDIDATE`/`DISMISSED`) and real `resolvedById`/`resolvedAt`/`note` fields, with a real controller endpoint exposing detection, listing, and human resolution (audit-logged). This is a real, currently-operating review/resolution workflow, not merely a passive relation. DGX 3.0 may consume its governed outputs as evidence but does not own or redefine it (§49, `DGX3-ADR-0001`). |
 | Diagnostic Session | A real diagnostic encounter | Diagnostics module | Operational Core | Data Steward | Yes | **Real, existing** (`DiagnosticSession`) |
 | DTC Observation | A real diagnostic trouble code record | Diagnostics module | Operational Core | Data Steward | Yes | **Real, existing** (`DiagnosticCode`, includes `code`, `source`, `freezeFrame`) |
 | DTC Status | Active/historical/cleared state of a DTC | Conceptual | DGX 3.0 (proposed) | Data Steward | No | Conceptual — no real status field beyond `recordedAt` exists today |
@@ -412,7 +426,7 @@ Unapproved, internet-sourced repair advice must never become operational evidenc
 | Domain | Read contract | Proposed write contract | Notes |
 |---|---|---|---|
 | Vehicle | Read `Vehicle` (VIN, make/model/year/engine) | None — DGX 3.0 never writes to `Vehicle` | |
-| Workshop/Garage | Read `GarageJob`, `GarageJobLine`, `JobStatusHistory`, `RepeatRepairFlag` | Proposed: write a new, DGX-3.0-owned `RiskAssessment`/`MaintenanceRecommendation` record, never a write to `GarageJob` itself | Preserves capability isolation (§23) |
+| Workshop/Garage | Read `GarageJob`, `GarageJobLine`, `JobStatusHistory`, `RepeatRepairFlag` | Proposed: write a new, DGX-3.0-owned `RiskAssessment`/`MaintenanceRecommendation` record, never a write to `GarageJob` itself | Preserves capability isolation (§23); `RepeatRepairFlag`'s own real status/resolution workflow (§9) remains Operational Core's — read-only for DGX 3.0, never written to or redefined by it |
 | Diagnostics | Read `DiagnosticSession`, `DiagnosticCode`, `Symptom`, `SuspectedCause` | None | |
 | Inventory / Parts | Read real DGX-2.0-owned `InventoryItemMetric` and part data, as a beneficial signal only (§45) | None | DGX 3.0 must not write to any DGX-2.0-owned table |
 | Customer | Read `CustomerComplaint` | None | |
@@ -481,12 +495,24 @@ No implementation code, endpoint path, or DTO is created by this specification. 
 - Authentication/authorization: must use the existing, real Bearer JWT / `x-api-key` + `PermissionsGuard` mechanism — no new authentication mechanism is proposed.
 - Branch/organization scoping: must respect the existing, real `Branch`/`organizationId` scoping model.
 - Vehicle-data privacy and customer-data minimization: DGX 3.0 must not expose customer-identifying data beyond what the existing `CustomerComplaint`/`Customer` access model already permits.
-- Technician accountability: every acknowledgment/override must record a real actor ID (§29).
 - Model/policy access control: activation of any future model or policy version must be restricted to the Model Owner role (§31, §47).
-- Audit immutability: must use the existing, real, append-only `AuditLog` pattern.
+- Audit immutability: must use the existing, real, append-only `AuditLog` pattern — see §29 for a required correction to how "mandatory" actor recording is described against that model's real schema.
 - API security, rate limiting, abuse prevention, data export, deletion/retention, and security-incident handling: `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN`.
 
-**Honest acknowledgment of existing gaps**: per `SECURITY.md` (this repository's own, already-published security posture) and the Enterprise Roadmap's Risk Roadmap (§16 of that document), a legacy `RolesGuard` and a non-rejecting global JWT guard are real, currently-documented gaps in the broader authorization system DGX 3.0 would depend on. This specification does not claim those gaps are resolved, and any future DGX 3.0 engineering work must confirm their real status before relying on the permission model for anything safety-relevant (§27).
+**Current, verified repository behavior** (re-confirmed by direct code inspection as of this specification's effective date — this describes real repository behavior today, not an approved target architecture DGX 3.0 should assume it inherits unchanged):
+
+- A global `JwtAuthContextGuard` runs on every request; if a valid Bearer JWT or `x-api-key` is presented, it attaches a verified actor; if not, or if the credential is invalid or absent, it does not reject the request — it simply leaves no verified actor attached and lets the request proceed. This is real, existing, non-rejecting behavior, not a hypothetical risk.
+- `PermissionsGuard` — the mechanism most existing endpoints use for authorization — is **not** based only on a single, canonical, cryptographically-verified actor path: when no verified actor is attached, its own actor-resolution function falls back to trusting a legacy `x-user-role` header directly, with no cryptographic verification of that header's origin.
+- A separate, older `RolesGuard` also exists, and it is **not merely historical or dormant**: it remains actively imported and enforced today in at least three real controllers (`integration.controller.ts`, `parts.controller.ts`, `vehicles.controller.ts`), and it likewise trusts the same unverified `x-user-role` header directly.
+- The net, real effect is a **mixed authorization model**: some endpoints are gated by `PermissionsGuard` (with a header-trust fallback when no verified actor exists), some by the separate `RolesGuard` (with the same header-trust behavior), and the global JWT guard itself never independently rejects an unauthenticated request. **Passing `PermissionsGuard` today does not, by itself, prove complete identity, tenant, branch, or actor integrity** — it proves only that some role value, whether cryptographically verified or merely header-asserted, matched a required permission string.
+
+**Required DGX 3.0 security behavior** (proposed, not yet implemented): every DGX-3.0-specific permission (`maintenance-risk.*`, §21, §43), and in particular every Safety-Relevant acknowledgement or override (§27), must be gated by a verified, cryptographically-authenticated actor — never by the unverified `x-user-role` header-fallback path described above. Branch/organization scoping, actor identity, and permission must each be independently confirmed before any Safety-Relevant action is accepted as attributable.
+
+**Pre-engineering remediation requirement**: before any DGX 3.0 engineering work begins (§50), the mixed authorization model described above must be reviewed and, for any endpoint DGX 3.0 would rely on, normalized to a single, verified-actor path. This specification does not prescribe the specific remediation design — only the required outcome and this gate.
+
+**Pre-pilot or pre-production validation requirement**: before any Pilot or Production reliance on a DGX 3.0 Safety-Relevant recommendation, a dedicated security review must independently confirm that no Safety-Relevant DGX 3.0 action can be acknowledged, overridden, or acted upon through the unverified header-fallback path, in either `PermissionsGuard` or `RolesGuard`.
+
+This specification does not claim any of the gaps above are resolved, and any future DGX 3.0 engineering work must confirm their real, current status before relying on the permission model for anything safety-relevant (§27).
 
 ---
 
@@ -518,6 +544,12 @@ No implementation code, endpoint path, or DTO is created by this specification. 
 ## 29. Auditability
 
 Every decision record must preserve (mirroring the real, existing `AuditLog` model's fields exactly): vehicle, assessment ID, actor, timestamp, input evidence, evidence versions, source systems, model version, rule version, policy version, risk output, recommendation, explanation, confidence, missing data, override, acknowledgement, final action, outcome, and the certification status in force at the time of the decision.
+
+**Existing platform capability vs. DGX 3.0 requirement (actor identity)**: the real, existing `AuditLog` model's `actorId` field is nullable at the schema level today (confirmed: `actorId String?`) — the platform does not currently enforce non-null actor recording at the database level for any capability, including DGX 3.0. This specification does not claim the present `AuditLog` implementation already enforces mandatory actor attribution; it does not. DGX 3.0 itself requires attributable human or system identity for every Operational and Safety-Relevant decision record, and for every override, acknowledgement, policy change, model activation, and final-action outcome (§26, §27, §28, §31) — this is a requirement DGX 3.0 must enforce at its own application layer, not a guarantee the existing schema already provides.
+
+**Permitted exception**: only an explicitly defined system-generated event (e.g., an automated data-quality rejection with no human actor, §11) may use a system identity or an approved non-human actor representation in place of a human actor, and only where that exception is named explicitly at certification-design time — never assumed by default for a Safety-Relevant or Operational record.
+
+**Prohibited behavior**: a Safety-Relevant or Operational recommendation, override, acknowledgement, or repair-related decision must never silently produce an unattributed audit record. If no accountable actor identity is available at the moment such a record would be written, the required safe behavior is to reject the governed action, or to require the acting user to re-authenticate, with an auditable failure event recorded wherever technically possible — never a silent continuation with a null or absent actor.
 
 **Immutable fields** (once written): the original risk output, explanation, model/policy version, and timestamp — exactly as DGX 2.0's own `AuditLog` usage already treats a recorded approval/rejection as immutable.
 **Amendable fields**: outcome and feedback, which are expected to be added later as real-world confirmation arrives, always as a new, additional record — never as an edit to the original assessment.
@@ -687,7 +719,7 @@ Proposed new permission strings (e.g. `maintenance-risk.read`, `maintenance-risk
 
 | Phase | Scope | Entry criteria | Exit criteria | Non-goals | Approval authority |
 |---|---|---|---|---|---|
-| **A** | Governed maintenance timeline, deterministic rules (extending real, existing logic), transparent risk scoring, manual review, the limited use-case set in §7 | This specification approved; owners assigned (§47); pre-engineering gates met (§50) | Real, working deterministic capability, certified at least at a "Specified→Implemented" governance level, not yet certified for Pilot | Any ML model; any component-level prediction | Architecture Board + Business Owner |
+| **A** | Governed maintenance timeline, deterministic rules (extending real, existing logic), transparent risk scoring, manual review, the limited use-case set in §7 | This specification approved to Specified maturity (independent of `DGX3-ADR-0001` acceptance, §49); owners assigned (§47); pre-engineering gates, including all ten ADRs, met (§50) | Real, working deterministic capability, certified at least at a "Specified→Implemented" governance level, not yet certified for Pilot | Any ML model; any component-level prediction | Architecture Board + Business Owner |
 | **B** | Statistical degradation/recurrence models | Real, sufficient non-failure-labeled trend data confirmed | Measured improvement over Phase A's deterministic baseline, real evidence | Component-specific models | Architecture Board + Certification Authority |
 | **C** | Component-specific predictive models | A real `Component` entity and real component-level outcome data exist | Certified component-level predictions | Telematics integration | Architecture Board + Certification Authority |
 | **D** | Approved telematics/condition-monitoring integration | A real, approved telematics data source is contracted and governed | Real condition-based horizon support | Fleet-scale learning | Business Owner + Legal Review |
@@ -769,7 +801,7 @@ No owner is invented where none is assigned — "Not yet assigned" appears throu
 | Legal reviewer | Not yet assigned |
 | Change authority | Architecture Board (per existing Governance Standard convention) |
 
-Decisions requiring an ADR, Architecture Review, Governance approval, Certification approval, Business approval, Security approval, or Legal review are enumerated in §48 and §49 below — none of these approvals has occurred as of this specification's effective date.
+Decisions requiring an ADR, Architecture Review, Governance approval, Certification approval, Business approval, Security approval, or Legal review are enumerated in §48 and §49 below — none of these approvals has occurred as of this specification's effective date. None of the ADRs in §49, including `DGX3-ADR-0001`, gates this specification's own approval to Specified maturity; each gates Implemented-stage engineering, per §50.
 
 ---
 
@@ -795,6 +827,8 @@ This document itself follows the same append-only, no-silent-edit versioning dis
 
 `DGX3-ADR-0001` Capability Boundary — must resolve the recorded finding in §1: existing `vehicle-lifecycle`/`twin-intelligence` functionality may provide a Phase A foundation, but its ownership and relationship to DGX 3.0 remain unresolved until this ADR is accepted · `DGX3-ADR-0002` Initial Use-Case Scope · `DGX3-ADR-0003` Risk Score Semantics · `DGX3-ADR-0004` Rule Engine vs. Model Engine (and the precedence order proposed in §19) · `DGX3-ADR-0005` Failure Taxonomy Ownership · `DGX3-ADR-0006` Vehicle History System of Record · `DGX3-ADR-0007` Outcome Feedback Governance · `DGX3-ADR-0008` Model Registry and Activation (and its relationship to the existing, LLM-specific `model-registry/` module) · `DGX3-ADR-0009` Event-Driven vs. On-Demand Assessment · `DGX3-ADR-0010` Safety-Relevant Recommendation Policy.
 
+**Required timing clarification**: none of the ten ADRs above — including `DGX3-ADR-0001` — is a precondition for this specification's own advancement to Specified maturity (Capability Governance Standard §6, Level 1). Specified maturity is a documentation-level checkpoint confirming this specification itself is complete, evidence-based, and safely bounded; it does not depend on any ADR having been accepted. `DGX3-ADR-0001` specifically is a mandatory precondition for Implemented-stage engineering work (§50) — no engineering against, adoption of, wrapping of, migration of, or replacement of `vehicle-lifecycle`/`twin-intelligence` functionality may begin until it is accepted. When accepted, `DGX3-ADR-0001` must decide among the bounded alternatives this specification has already identified evidence for — formal adoption of the existing functionality, wrapping it through a DGX-3.0-owned interface, a controlled migration, partial reuse, or supersession — and must not, in the course of doing so, redefine DGX 3.0's business purpose (§4) or safety boundary (§27).
+
 None of these ADRs is created by this specification.
 
 ---
@@ -802,6 +836,8 @@ None of these ADRs is created by this specification.
 ## 50. Pre-Engineering Entry Gates
 
 Engineering must not begin until, at minimum: this specification is approved; a Business Owner is assigned; an Operational Owner is assigned; Architecture Review is approved; Phase A use cases (§6, §7) are approved; the data-source inventory (§10) is completed and re-confirmed; a formal data-readiness report (mirroring DGX 2.0's own precedent) is completed; the failure taxonomy (§12) is approved; risk semantics (§14) are approved; a security review (§26) is completed; the Safety Decision Matrix (§27) is approved; initial API contracts (§24) are approved; all ten ADRs (§49) are accepted; certification-standard work is separately authorized; and an engineering execution plan (mirroring DGX 2.0's own `AIOS_PHASE_II_ENGINEERING_EXECUTION_PROGRAM_V1.md` precedent) is approved.
+
+This specification's own advancement to Specified maturity is the first of these gates and is evaluated independently of the ADR-acceptance gate listed above — reaching Specified does not require any ADR, including `DGX3-ADR-0001`, to already be accepted. Only engineering itself requires every gate above, ADRs included, to be satisfied.
 
 **None of these gates is satisfied as of this specification's effective date.**
 
@@ -815,7 +851,29 @@ Anticipated future additions, none created here: a DGX 3.0 domain module (e.g. `
 
 ## 52. Acceptance Criteria for This Specification
 
-This document is acceptable only if: the capability boundary is explicit (§4, §23); Phase A is narrow and evidence-driven (§7); out-of-scope items are explicit (§8); data requirements are complete (§9-§11); missing data is treated safely (§11, §13, §38); human accountability is preserved (§5, §16, §27, §28); predictive maintenance is distinct from diagnostics and Technician Copilot (§4); safety limits are defined (§27); model lifecycle is governed (§31); evaluation and certification foundations are defined (§32-§34); integration boundaries are clear (§21-§23); no implementation is authorized (throughout); no maturity is overstated (Document Control, §7); no target metric is fabricated (§3, §35); all assumptions are labeled (`ASSUMPTION` throughout); repository references are accurate (verified directly against the repository at the effective date); and terminology is consistent with AIOS governance (Capability Governance Standard §5-§6 vocabulary used throughout).
+This document is acceptable only if: the capability boundary is explicit (§4, §23); Phase A is narrow and evidence-driven (§7); out-of-scope items are explicit (§8); data requirements are complete (§9-§11); missing data is treated safely (§11, §13, §38); human accountability is preserved (§5, §16, §27, §28); predictive maintenance is distinct from diagnostics and Technician Copilot (§4); safety limits are defined (§27); model lifecycle is governed (§31); evaluation and certification foundations are defined (§32-§34); integration boundaries are clear (§21-§23); no implementation is authorized (throughout); no maturity is overstated (Document Control, §7); no target metric is fabricated (§3, §35); all assumptions are labeled (`ASSUMPTION` throughout); repository references are accurate (verified directly against the repository at the effective date); the distinction between Specified-stage approval and Implemented-stage engineering is explicit, including that `DGX3-ADR-0001` and the other required ADRs (§49) gate engineering, not Specified-stage approval (§49, §50); and terminology is consistent with AIOS governance (Capability Governance Standard §5-§6 vocabulary used throughout).
+
+---
+
+## Appendix A: Condition Resolution Record — Specification Formal Review #1
+
+This appendix records the resolution of the five conditions attached to the `APPROVED_WITH_CONDITIONS` verdict issued in `docs/reviews/DGX3_SPECIFICATION_FORMAL_REVIEW_1.md`. Final closure verification was independently performed by the DGX 3.0 Final Maturity Approval Authority, which issued the `APPROVED_AS_SPECIFIED` verdict recorded in that report's Condition Closure Addendum. This closure **advances DGX 3.0 to Specified maturity; it does not authorize engineering, and does not resolve `DGX3-ADR-0001`**.
+
+| Field | CR-001 | CR-002 | CR-003 | CR-004 | CR-005 |
+|---|---|---|---|---|---|
+| Condition | RepeatRepairFlag workflow accuracy | PermissionsGuard and RolesGuard accuracy | AuditLog.actorId nullability | DGX3-ADR-0001 timing | Cross-document status synchronization |
+| Review finding reference | `DGX3-REV1-ARCH-001` | `DGX3-REV1-SEC-001`, `DGX3-REV1-SEC-002` | `DGX3-REV1-DATA-001` | `DGX3-REV1-ARCH-002` | `DGX3-REV1-GOV-001`, `DGX3-REV1-GOV-002` |
+| Files changed | This specification (§2, §6, §7, §9, §21) | This specification (§26) | This specification (§29, cross-referenced from §26) | This specification (Document Control, §44, §47, §49, §50, §52) | `README.md`; `docs/strategy/AIOS_ENTERPRISE_ROADMAP_V1.md`; `docs/governance/AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`; `docs/architecture/AIOS_REFERENCE_ARCHITECTURE_V1.md` (independently discovered stale statement, corrected under final-closure authority) |
+| Resolution summary | Corrected every affected section to describe `RepeatRepairFlag` as a real, currently-operating status/resolution workflow (not a passive relation), while explicitly preserving that DGX 3.0 does not own or redefine it. | Rewrote §26 to separate current verified repository behavior (mixed-model authorization, `PermissionsGuard`'s `x-user-role` fallback, `RolesGuard`'s continued active use in three real controllers) from DGX 3.0's own required security behavior, pre-engineering remediation requirement, and pre-pilot/pre-production validation requirement. | Added an explicit distinction in §29 between the real, nullable `AuditLog.actorId` schema field and DGX 3.0's own required attributable-actor behavior, including a permitted system-identity exception and prohibited silent-continuation behavior. | Added explicit timing language in five sections stating `DGX3-ADR-0001` (and the other nine ADRs) gate Implemented-stage engineering, not Specified-stage approval, consistent with DGX 2.0's own specification-approval precedent. | Corrected the stale "no specification exists yet" statements in all four external documents (including the independently discovered Reference Architecture instance) to reflect that an approved specification exists at **Specified** maturity, following final closure. |
+| Evidence checked | `schema.prisma` (`RepeatRepairFlag`, `RepeatRepairStatus`), `vehicle-lifecycle.controller.ts`, `repeat-repair.service.ts` | `jwt-auth-context.guard.ts`, `permissions.guard.ts`, `roles.guard.ts`, and their real controller usages | `schema.prisma` (`AuditLog.actorId String?`) | Capability Governance Standard §6 maturity model; DGX 2.0 specification-approval precedent | Direct grep of `README.md`, `AIOS_ENTERPRISE_ROADMAP_V1.md`, `AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`, `AIOS_REFERENCE_ARCHITECTURE_V1.md` for DGX 3.0 status references |
+| Status | `CLOSED` | `CLOSED` | `CLOSED` | `CLOSED` | `CLOSED` |
+| Maturity impact | None — documentation accuracy only; does not itself change maturity | None — documentation accuracy only; does not itself change maturity | None — documentation accuracy only; does not itself change maturity | Enables Specified-stage approval to proceed independently of `DGX3-ADR-0001` | Enables cross-document recognition of Specified maturity once approved |
+| Engineering impact | None — engineering remains NOT AUTHORIZED | None — engineering remains NOT AUTHORIZED; pre-engineering remediation gate (§26) still applies | None — engineering remains NOT AUTHORIZED; application-layer enforcement remains future engineering work | None — `DGX3-ADR-0001` remains mandatory before Implemented-stage engineering | None — engineering remains NOT AUTHORIZED in every synchronized document |
+| Remaining dependency (post-closure) | `DGX3-ADR-0001` still must independently resolve ownership, now against a more complete description of the precedent code — this condition closes the *documentation accuracy* gap, not the ownership question itself. | Actual normalization of the mixed authorization model is real, future pre-engineering work (§50, §26) — not achievable by documentation alone; this condition closes the *description accuracy* gap. | Actual application-layer enforcement of mandatory actor attribution is real, future engineering work — not achievable by documentation alone; this condition closes the *description accuracy* gap. | `DGX3-ADR-0001` itself remains undrafted and the ownership question remains open; this condition closes the *timing ambiguity* only, not the boundary question. | None outstanding. |
+| Closure authority | DGX 3.0 Final Maturity Approval Authority (documentation correction verified); Architecture Board remains authority for eventual `DGX3-ADR-0001` acceptance | DGX 3.0 Final Maturity Approval Authority (documentation correction verified); Security Reviewer / Architecture Board remain authority for eventual remediation and pre-pilot validation | DGX 3.0 Final Maturity Approval Authority (documentation correction verified); Architecture Board remains authority for eventual enforcement design | DGX 3.0 Final Maturity Approval Authority (final Specified-stage approval issued); Architecture Board remains authority for eventual `DGX3-ADR-0001` acceptance | DGX 3.0 Final Maturity Approval Authority (documentation correction verified for README, Roadmap, Governance Standard, and Reference Architecture) |
+| Closure date | 2026-07-29 | 2026-07-29 | 2026-07-29 | 2026-07-29 | 2026-07-29 |
+
+**Overall condition-resolution status: `CLOSED`.** All five conditions recorded by Specification Formal Review #1 were independently re-verified against repository evidence and closed by the DGX 3.0 Final Maturity Approval Authority on 2026-07-29. This closure advances this specification to Specified maturity. **It does not authorize engineering, and it does not resolve `DGX3-ADR-0001`** — those remain separate, future, not-yet-issued actions gated by §49/§50.
 
 ---
 

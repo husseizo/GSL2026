@@ -118,7 +118,7 @@ flowchart TB
 
     subgraph L5["Capability Layer"]
         DGX2["DGX 2.0 — Demand Forecasting\nStatus: Phase A Implemented and Closed;\nTwo certification runs completed (NOT_READY);\nManual operational model"]
-        DGX3["DGX 3.0 — Predictive Maintenance\nStatus: Concept"]
+        DGX3["DGX 3.0 — Predictive Maintenance\nStatus: Specified"]
         DGX4["DGX 4.0 — Technician Copilot\nStatus: Concept"]
         DGX5["DGX 5.0 — Customer Intelligence\nStatus: Concept"]
         DGX6["DGX 6.0 — Management Intelligence\nStatus: Concept"]
@@ -136,7 +136,7 @@ Every capability sits at the same architectural depth — directly on top of the
 | Capability | Status |
 |---|---|
 | DGX 2.0 — Demand Forecasting | **Phase A Implemented and Closed** (frozen baseline `DGX2-PHASE-A-BASELINE-1.0`, `docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`). Real classical-statistical baseline (`forecasting/`, `inventory-analytics/`, `purchase-recommendations/`, `transfer-recommendations/`, `lost-sales/`, `supplier-analytics/`). **Two real certification runs executed** against `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md` (v1.1) — both `NOT_READY`. Operating under the Manual operational model, owned by Business Operations. **Not yet Certified** (Governance Standard §6, Level 4) — a certification run occurring is not sufficient; it must also pass. |
-| DGX 3.0 — Predictive Maintenance | **Concept.** Named in the Foundation's transition rule only; no specification exists. |
+| DGX 3.0 — Predictive Maintenance | **Specified** (Capability Governance Standard §6, Level 1). `docs/capabilities/DGX_3_PREDICTIVE_MAINTENANCE_SPECIFICATION_V1.md` is an approved specification (Formal Review #1: `APPROVED_WITH_CONDITIONS`; conditions CR-001 through CR-005 closed; final closure verdict: `APPROVED_AS_SPECIFIED`). Implementation has **not started** and is **not authorized**; certification has **not started**; Pilot and Production are **not authorized**. `DGX3-ADR-0001` is mandatory before any Implemented-stage engineering begins. |
 | DGX 4.0 — Technician Copilot | **Concept.** |
 | DGX 5.0 — Customer Intelligence | **Concept.** |
 | DGX 6.0 — Management Intelligence | **Concept.** |

@@ -450,10 +450,10 @@ A capability scoring poorly on any dimension is not automatically retired, but t
 |---|---|---|
 | AI Foundation | Foundation (not a capability itself — the platform every capability depends on) | **Implemented and Certified** (`AI_FOUNDATION_CERTIFIED`) |
 | DGX 2.0 — Demand Forecasting | Forecasting | **Phase A Implemented and Closed.** A real classical-statistical baseline (`forecasting/`, `inventory-analytics/`, `purchase-recommendations/`, `transfer-recommendations/`, `lost-sales/`, `supplier-analytics/`) exists in the repository, with its frozen historical record at `docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`. Its capability specification and dedicated certification standard both exist (`docs/capabilities/DGX_2_DEMAND_FORECASTING_SPECIFICATION_V1.md`, `docs/certification/DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`, amended to v1.1). **Two real certification runs have been executed — both returned `NOT_READY`.** Current honest maturity remains Level 2-3 (§6) — a certification run having occurred is not, by itself, Level 4 (Certified); Level 4 requires the run to actually pass at a Bronze-equivalent level, which neither run did. The capability operates under a confirmed Manual model, owned by Business Operations. |
-| DGX 3.0 — Predictive Maintenance | Prediction | **Concept.** Named in the Foundation's transition rule (`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md` §17) as a future capability layer. No specification exists yet. |
-| DGX 4.0 — Technician Copilot | Copilot | **Concept.** Same status as DGX 3.0. |
-| DGX 5.0 — Customer Intelligence | Analytics / Recommendation | **Concept.** Same status as DGX 3.0. |
-| DGX 6.0 — Management Intelligence | Analytics / Planning | **Concept.** Same status as DGX 3.0. |
+| DGX 3.0 — Predictive Maintenance | Prediction | **Specified** (Level 1). Named in the Foundation's transition rule (`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md` §17); `docs/capabilities/DGX_3_PREDICTIVE_MAINTENANCE_SPECIFICATION_V1.md` is now an approved specification — Formal Review #1 returned `APPROVED_WITH_CONDITIONS`, conditions CR-001 through CR-005 were closed, and final closure returned `APPROVED_AS_SPECIFIED`. Implementation has not started and is not authorized; certification has not started; Pilot and Production are not authorized. `DGX3-ADR-0001` is mandatory before any Implemented-stage engineering begins. |
+| DGX 4.0 — Technician Copilot | Copilot | **Concept.** No specification exists yet. |
+| DGX 5.0 — Customer Intelligence | Analytics / Recommendation | **Concept.** No specification exists yet. |
+| DGX 6.0 — Management Intelligence | Analytics / Planning | **Concept.** No specification exists yet. |
 | Future capabilities | Any (§7) | **Not yet imagined.** This governance standard applies to them identically, from their first Idea (§5) onward, without needing an update to this document. |
 
 No capability above DGX 2.0's honest current status may be described, in any other document, as more mature than the table above states. This table is itself subject to the same "no fabricated evidence" discipline as everything else in this governance model — it is corrected the moment real status changes, never left stale to look more advanced than reality.
@@ -497,12 +497,14 @@ flowchart TB
     subgraph Top["Governed by This Standard"]
         direction TB
         Cn["Future Capabilities\n(not yet imagined)"]
-        C3["DGX 3.0 / 4.0 / 5.0 / 6.0\n(Concept)"]
+        C456["DGX 4.0 / 5.0 / 6.0\n(Concept)"]
+        C3["DGX 3.0 — Predictive Maintenance\n(Specified)"]
         C2["DGX 2.0 — Demand Forecasting\n(Specified, partially Implemented)"]
     end
     Found["AI Foundation\n(AI_FOUNDATION_CERTIFIED — permanent, frozen)"]
 
     Cn --> Top
+    C456 --> Top
     C3 --> Top
     C2 --> Top
     Top --> Found

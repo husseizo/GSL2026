@@ -39,7 +39,7 @@ A layered platform where operational transactions, vehicle intelligence, and AI-
 |---|---|
 | **AI Foundation** | `AI_FOUNDATION_CERTIFIED` — Retrieval Intelligence, Knowledge Platform, and the Evaluation Framework are certified against a real gold benchmark. |
 | **DGX 2.0 — Demand Forecasting, Phase A** | Implementation **closed**; frozen baseline **`DGX2-PHASE-A-BASELINE-1.0`**; operating under the **Manual operational model**, owned by **Business Operations / Inventory Planners**. Certification Standard v1.1 is the active governance baseline. Two real certification runs have been executed (Certification Run #1 and Certification Run #2); **both returned `NOT_READY`**. Future certification depends solely on genuine new operational evidence — nothing here was fabricated to change that outcome. |
-| **DGX 3.0 — Predictive Maintenance** | Concept. No specification exists yet. |
+| **DGX 3.0 — Predictive Maintenance** | **Specified** (Capability Governance Standard §6, Level 1). [`docs/capabilities/DGX_3_PREDICTIVE_MAINTENANCE_SPECIFICATION_V1.md`](docs/capabilities/DGX_3_PREDICTIVE_MAINTENANCE_SPECIFICATION_V1.md) is an approved specification — Formal Review #1 returned `APPROVED_WITH_CONDITIONS`, conditions CR-001 through CR-005 were closed, and final closure returned `APPROVED_AS_SPECIFIED`. Implementation has **not started** and is **NOT AUTHORIZED**; certification has not started; Pilot and Production are not authorized. `DGX3-ADR-0001` is mandatory before any Implemented-stage engineering begins. |
 | **DGX 4.0 — Technician Copilot** | Concept. No specification exists yet. |
 | **DGX 5.0 — Customer Intelligence** | Concept. No specification exists yet. |
 | **DGX 6.0 — Management Intelligence** | Concept. No specification exists yet. |
