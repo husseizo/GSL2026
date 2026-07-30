@@ -145,6 +145,21 @@ export const PERMISSIONS = [
   // DGX Prototype 1.7.2 — Retrieval Intelligence Platform.
   'retrievalIntelligence.query',
   'retrievalIntelligence.manage',
+  // Platform Remediation PEP-3 — Permission Migration (WP-3.0, see
+  // docs/governance/DGX3_PLATFORM_REMEDIATION_TECHNICAL_SPECIFICATION_1.md
+  // §4, PRTS-003). Migrates integration/parts/vehicles off RolesGuard's
+  // direct x-user-role header read onto PermissionsGuard. Each grant in
+  // role-permissions.ts is an exact match to that endpoint's pre-migration
+  // @Roles(...) list — no role gains or loses access. Controller migration
+  // itself is out of scope for WP-3.0; these constants are unused until
+  // WP-3.1/3.2/3.3.
+  'integration.sync',
+  'integration.deadLetters.read',
+  'integration.deadLetters.resolve',
+  'parts.create',
+  'parts.matchCandidates.manage',
+  'vehicle.create',
+  'vehicle.correct',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

@@ -148,6 +148,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'notifications.manage',
     'ai.forecast.generate',
     'ai.feedback.manage',
+    // Platform Remediation PEP-3 (WP-3.0) — exact match to this role's
+    // pre-migration @Roles(...) access on vehicles.controller.ts.
+    'vehicle.create',
+    'vehicle.correct',
   ],
   [Role.PARTS_MANAGER]: [
     'parts.read',
@@ -163,6 +167,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ai.recommend',
     'ai.forecast.read',
     'ai.knowledgeBase.read',
+    // Platform Remediation PEP-3 (WP-3.0) — exact match to this role's
+    // pre-migration @Roles(...) access on parts.controller.ts and
+    // vehicles.controller.ts.
+    'parts.create',
+    'parts.matchCandidates.manage',
+    'vehicle.create',
+    'vehicle.correct',
   ],
   [Role.LUBRICANTS_MANAGER]: [
     'lubricants.read',
@@ -178,7 +189,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'ai.forecast.read',
     'ai.knowledgeBase.read',
   ],
-  [Role.STOREKEEPER]: ['warehouse.read', 'inventory.read', 'inventory.adjust', 'purchases.read', 'sales.read'],
+  [Role.STOREKEEPER]: [
+    'warehouse.read',
+    'inventory.read',
+    'inventory.adjust',
+    'purchases.read',
+    'sales.read',
+    // Platform Remediation PEP-3 (WP-3.0) — exact match to this role's
+    // pre-migration @Roles(...) access on parts.controller.ts (POST /parts).
+    'parts.create',
+  ],
   [Role.PURCHASING_OFFICER]: ['purchases.read', 'purchases.import', 'supplierAnalytics.read', 'recommendations.read'],
   [Role.PURCHASING_MANAGER]: [
     'purchases.read',
@@ -214,6 +234,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'dataSnapshots.read',
     'aiReadiness.read',
     'forecastBaseline.read',
+    // Platform Remediation PEP-3 (WP-3.0) — exact match to this role's
+    // pre-migration @Roles(...) access on integration.controller.ts's
+    // dead-letter endpoints.
+    'integration.deadLetters.read',
+    'integration.deadLetters.resolve',
   ],
   [Role.AUDITOR]: [...ALL_READ],
   [Role.READ_ONLY_VIEWER]: [...ALL_READ],
