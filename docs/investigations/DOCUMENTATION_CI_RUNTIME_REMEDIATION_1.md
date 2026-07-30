@@ -1,6 +1,6 @@
 # Documentation CI Runtime Remediation #1
 
-## Status: RUNTIME REMEDIATION — MERMAID CONTENT AND VALIDATOR LOGIC UNCHANGED
+## Status: RUNTIME REMEDIATED — LIVE CI CONFIRMED SUCCESS (MERMAID CONTENT AND VALIDATOR LOGIC UNCHANGED)
 
 ---
 
@@ -12,8 +12,12 @@
 | Follows from | `DOCUMENTATION_CI_ROOT_CAUSE_INVESTIGATION_1.md`; `DOCUMENTATION_CI_OBSERVABILITY_REMEDIATION_1.md` |
 | Modified files | `.github/workflows/docs-mermaid-check.yml`; `scripts/ci/validate-mermaid-blocks.py`; new `scripts/ci/chromium-smoke-test.cjs` |
 | Effective date | 2026-07-30 |
+| Commits | `34b2f6e` (initial remediation — dependency install, diagnostics, smoke test); `be85eaa` (fix: escape and emit the smoke test's own failure as a GitHub annotation); `0212418` (fix: the actual runtime bug — `await` a Puppeteer API that changed from sync to async) |
+| Final live result | **SUCCESS** — confirmed on GitHub Actions run `30585379365` (commit `0212418`); see §12a |
 
 **This document records a CI runtime change only. No Mermaid diagram, no documentation content, and no pass/fail validation logic was altered — a block still fails if and only if `mmdc` exits non-zero. What changed is making the runtime Chromium actually able to launch on the GitHub-hosted Ubuntu runner, deterministically, before the real validator ever runs.**
+
+**Honest note on how this was actually reached**: the initial remediation (commit `34b2f6e`, §5 below) was necessary but, on its own, not sufficient — the first live run after it still failed at the smoke-test step. That failure's real cause was invisible until a second, small fix (`be85eaa`) taught the smoke test to emit a properly escaped GitHub annotation instead of only `console.log`. Only then did the actual error surface, and it was not a missing system library at all — it was a genuine Puppeteer API change that a third commit (`0212418`) fixed directly. §12a documents this sequence in full; it is left in place rather than edited away, since it is itself direct evidence of why every diagnostic-emitting script in this pipeline needs the same escaped-annotation treatment.
 
 ---
 
@@ -103,7 +107,7 @@ Cannot be executed identically on this investigation's local (Windows) machine: 
 - Direct inspection confirms it resolves the Chromium path via the identical method already proven correct in the observability remediation's own diagnostics function.
 - The sandboxed-first, fallback-second control flow, the runtime-config file it writes, and its exit-code behavior on total failure were all reviewed against the script's own source for correctness (both attempts wrapped in matching try/catch/finally with browser cleanup, and a non-zero exit only if both attempts fail).
 
-**The authoritative result is the live GitHub Actions run** — see §12.
+**The authoritative result is the live GitHub Actions run** — see §12a: the smoke test genuinely failed twice (a real Puppeteer API-change bug, not a sandbox or dependency problem) before succeeding on the third, evidence-driven attempt.
 
 ---
 
@@ -115,7 +119,7 @@ Local execution of `scripts/ci/validate-mermaid-blocks.py` on this Windows machi
 - A genuinely invalid Mermaid diagram fails with a real Mermaid parser error (`mmdc -i invalid.mmd -o invalid.svg` → exit `1`, with a full `Parser.parseError` stack trace).
 - Adding `--puppeteerConfigFile <config>` (the exact mechanism `resolve_mmdc_extra_args()` now uses) changes **neither** outcome — the valid diagram still exits `0`, the invalid one still exits `1` with the same parser error. This directly confirms the runtime remediation cannot mask or alter a genuine Mermaid syntax failure.
 
-**The authoritative pass/fail result for the 10 originally-failing blocks is the live GitHub Actions run** — see §12.
+**The authoritative pass/fail result for the 10 originally-failing blocks is the live GitHub Actions run** — see §12a: confirmed SUCCESS on run `30585379365` (commit `0212418`), with the real validator step actually executing (not skipped) for the first time in this remediation.
 
 ---
 
@@ -132,6 +136,43 @@ Repeated with `--puppeteerConfigFile puppeteer-config.json` (`{"args": []}`) pre
 
 ---
 
+## 12a. The Actual Live Verification Sequence (Post-Hoc, Evidence-Based)
+
+This section documents what genuinely happened across three live GitHub Actions runs, in order, since §9-§11 above were written before the live outcome was known and describe intended design rather than confirmed results.
+
+**Run 1 — commit `34b2f6e` (the §5 remediation as originally committed).** Result: `Documentation Mermaid Validation` — **failure**. Steps through "Stage 1 (repeat) — Confirm no shared libraries remain missing" all succeeded (confirming the dependency list in §5 step 3 left no missing shared libraries per `ldd`). The "Browser launch smoke test" step itself failed. The check-run annotations exposed only a generic `Process completed with exit code 1.` — `scripts/ci/chromium-smoke-test.cjs` used only `console.log()` for its failure diagnostics, so the actual Puppeteer error text, while present in the plain job log, was not retrievable through the public Checks API annotations endpoint (raw job-log downloads return `403 — Must have admin rights to Repository` in this environment, as in every prior task in this program).
+
+**Fix 1 — commit `be85eaa`.** Ported the same `%`/CR/LF annotation-escaping approach already used in `validate-mermaid-blocks.py` into `chromium-smoke-test.cjs`: failures from each launch attempt are now captured and, if both attempts fail, emitted as a single escaped `::error::` annotation containing the full detail for both. No launch or remediation logic changed in this commit — diagnostics only.
+
+**Run 2 — commit `be85eaa`.** Result: `Documentation Mermaid Validation` — **failure**, same step. This time the check-run annotation contained the real error, verbatim:
+
+```text
+Error: Browser was not found at the configured executablePath ([object Promise])
+    at ChromeLauncher.launch (.../puppeteer-core/lib/puppeteer/node/BrowserLauncher.js:72:19)
+    ...
+    at async attemptLaunch (/home/runner/work/GSL2026/GSL2026/scripts/ci/chromium-smoke-test.cjs:63:15)
+```
+
+for both the sandboxed and unsandboxed attempts — proving the failure was identical regardless of sandbox state, i.e. not a sandbox problem at all.
+
+**Root cause, confirmed directly.** `[object Promise]` is the literal string produced when a `Promise` object is coerced to a string. `chromium-smoke-test.cjs` (and, separately, the workflow's own "Stage 1" diagnostics one-liners) called `puppeteer.executablePath()` and used the result as if it were a synchronous string. Installing the exact pinned `puppeteer@25.4.0` in a scratch directory and calling `puppeteer.executablePath()` directly confirmed it returns a `Promise` on this version — a genuine API change from older Puppeteer releases, not an environment or CI-specific quirk:
+
+```text
+typeof: object
+is Promise: true
+value: Promise { <pending> }
+```
+
+Awaiting it resolved to a real path (`.../chrome/win64-151.0.7922.47/chrome-win64/chrome.exe` in the local reproduction), which existed on disk and launched successfully once passed correctly.
+
+**Critically, `mmdc` itself was never affected by this bug.** A direct `grep -rn "executablePath"` across the installed `@mermaid-js/mermaid-cli@11.16.0` source returned no matches — `mmdc`'s own code (`src/index.js:788,862`) only ever calls `await puppeteer.launch(puppeteerConfig)` directly, letting Puppeteer resolve and launch the browser internally (which it does correctly, asynchronously, inside its own `launch()` implementation). The bug was entirely isolated to this remediation's own diagnostic tooling (the smoke test and the workflow's Stage-1 one-liners) — never to the real validator path. This means the §5 dependency installation was not wasted: `ldd` confirmed no missing shared libraries either before or after that step, so it cannot be ruled out as necessary on a differently-provisioned runner image in the future, and it is retained unchanged.
+
+**Fix 2 — commit `0212418`.** Added `await` to `puppeteer.executablePath()` in `chromium-smoke-test.cjs`, and rewrote the two equivalent one-liners in `.github/workflows/docs-mermaid-check.yml`'s Stage-1 diagnostics steps to use an async IIFE (`node -e "(async()=>{console.log(await require(process.argv[1]).executablePath())})()"`) so they report the real resolved path instead of the literal text `Promise { <pending> }` (which is what `console.log()` on an un-awaited Promise prints — a second, previously-unnoticed but non-blocking instance of the same root cause, since those steps use `|| true` and never gated the job). Verified locally beforehand, against the actual pinned `puppeteer@25.4.0` install: awaiting `executablePath()` before passing it to `puppeteer.launch()` succeeds, opens `about:blank`, and closes cleanly.
+
+**Run 3 — commit `0212418`.** Result: `Documentation Mermaid Validation` — **SUCCESS**, GitHub Actions run `30585379365`. All 12 steps, including "Browser launch smoke test" and "Extract and validate every mermaid block" (previously always `skipped`), completed successfully. Check-run annotations: exactly one, the pre-existing, non-blocking Node.js 20 deprecation warning — no error annotations, confirming the observability work stayed intact and concise on success.
+
+---
+
 ## 12. Rollback Procedure
 
 Every change in this remediation is isolated and independently revertible:
@@ -139,14 +180,15 @@ Every change in this remediation is isolated and independently revertible:
 - **Puppeteer pinning / dependency installation / diagnostics / smoke test** (all in `.github/workflows/docs-mermaid-check.yml`): revert the file to its prior committed state (the version from the observability remediation commit) to remove all five new steps at once; the "Install mermaid-cli" and "Extract and validate every mermaid block" steps return to their exact prior form.
 - **`scripts/ci/validate-mermaid-blocks.py`**: revert `resolve_mmdc_extra_args()` and its one-line use in the `cmd` construction to restore the exact prior invocation (`cmd = ["mmdc", "-i", tmp_in, "-o", tmp_out]`) — this is a two-part, easily isolated change within an otherwise-unmodified file.
 - **`scripts/ci/chromium-smoke-test.cjs`**: delete the file; nothing else depends on it existing except the one workflow step that invokes it (which would need to be removed at the same time, per the workflow revert above).
+- **The `await`/annotation fixes in `be85eaa` and `0212418`** are themselves small, isolated diffs on top of `34b2f6e`'s files (adding an escaped `::error::` emission path, and adding `await` to two already-existing `executablePath()` calls) — reverting to `34b2f6e` alone would restore the exact pre-fix state (smoke test failing, cause invisible), so any rollback of this remediation as a whole should revert to before `34b2f6e`, not to an intermediate commit.
 
-**Rollback trigger**: the smoke test consistently fails even after the dependency installation (indicating a deeper, different runtime problem than what this remediation addresses), or the real validator's pass/fail behavior for a known-valid or known-invalid diagram changes in a way inconsistent with §10-§11's findings.
+**Rollback trigger**: the smoke test consistently fails even after the dependency installation and the `await` fix (indicating a deeper, different runtime problem than what this remediation addresses), or the real validator's pass/fail behavior for a known-valid or known-invalid diagram changes in a way inconsistent with §10-§11's findings. Neither condition occurred — §12a documents genuine SUCCESS on the third live run.
 
 ---
 
 ## 13. What This Remediation Does Not Do
 
-This document does not authorize, and this remediation does not perform, any change to Mermaid diagram content, any other documentation, application source code, schemas, APIs, migrations, governance rules, or authorization logic. It does not weaken, disable, or bypass Mermaid syntax validation — confirmed directly in §11. The underlying pass/fail rule (`mmdc` exit code `0` = pass) is identical to before this remediation and to before the two remediations that preceded it in this program.
+This document does not authorize, and this remediation does not perform, any change to Mermaid diagram content, any other documentation, application source code, schemas, APIs, migrations, governance rules, or authorization logic. It does not weaken, disable, or bypass Mermaid syntax validation — confirmed directly in §11. The underlying pass/fail rule (`mmdc` exit code `0` = pass) is identical to before this remediation and to before the two remediations that preceded it in this program. The two follow-up commits (`be85eaa`, `0212418`) stayed within this same scope: one added annotation escaping to a diagnostic script, the other added a missing `await` to an existing API call — neither touched validation logic, Mermaid content, or any file outside `.github/workflows/` and `scripts/ci/`.
 
 ---
 
