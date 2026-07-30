@@ -16,6 +16,8 @@
 
 **This document specifies how the already-approved Platform Remediation will be executed. It does not perform any remediation itself — no source file, schema, migration, or API is created or changed by this document. It does not authorize DGX 3.0 engineering, does not change DGX 3.0's maturity (remains Specified) or certification status (remains Not Started), and every remediation activity defined below remains bound by the exact scope and exclusions already fixed in the Platform Remediation Authorization.**
 
+**Revision note**: this document was updated on 2026-07-30 to incorporate the resolutions recorded in `docs/reviews/DGX3_PLATFORM_REMEDIATION_CONDITION_RESOLUTION_1.md`, closing conditions CR-T-001, CR-T-002, and CR-T-003 from `docs/reviews/DGX3_PLATFORM_REMEDIATION_TECHNICAL_REVIEW_1.md`. Every change is marked inline with a "per Condition Resolution CR-T-00X" note at its point of insertion. No remediation scope was expanded or narrowed by this update — only the design of PRTS-001, the mapping for PRTS-003, and one factual correction (dependency direction) were clarified.
+
 ---
 
 ## 1. Executive Summary
@@ -83,12 +85,14 @@ Still actively applied, at the controller-class level, in exactly three real con
 1. `RolesGuard` reads `x-user-role` directly from headers, bypassing `getRequestActor()` — meaning a real, verified JWT actor is **never consulted at all** on any of the three controllers still using `RolesGuard`, even if the caller presents one. This is a materially different (and, for those three controllers, worse) gap than `PermissionsGuard`'s header-fallback, since `PermissionsGuard` at least *prefers* a verified actor when one exists.
 2. `JwtAuthContextGuard`'s swallowed-exception behavior means a caller who sends an **expired or tampered JWT** is treated identically to a caller who sends **no credential at all** — silently downgraded to whatever the legacy header path resolves to, rather than rejected.
 3. `docs/architecture/rbac-permissions.md` itself already documents, in its own words, that "branch/warehouse scoping is not enforced on every endpoint... a placeholder for a later phase once real authentication... exists" — meaning the current documentation already anticipated further tightening work of exactly this kind, which had not yet been scheduled or authorized until the Platform Remediation Authorization.
+4. **Added per Condition Resolution CR-T-001**: a repository-wide scan of all 75 controllers in `services/operational-core` found only two files with zero guard-related decorators anywhere (`src/api-platform/health.controller.ts`, `src/observability/observability.controller.ts`) — but a file-level scan alone understates the real picture. Several otherwise-guarded controllers have individual methods with no `@RequirePermissions`/`@Roles` decorator at all, and are therefore equally open today: `src/identity/identity.controller.ts`'s own authentication endpoints (`/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/mfa/*`, `/auth/password/*`, `/auth/email/*` — necessarily open, since a caller cannot present a JWT before logging in), and the `GET` methods in `src/parts/parts.controller.ts` (`GET /parts`, `GET /parts/:id`) and `src/vehicles/vehicles.controller.ts` (`GET /vehicles`, `GET /vehicles/vin/:vin`, `GET /vehicles/:id`), none of which carry a `@Roles(...)` decorator. **A static, hand-maintained file list cannot reliably catch this** — the correct remediation design (see PRTS-001, §4) must check, at the handler level, whether any permission/role metadata is present, not rely on a fixed inventory of "known open files."
 
 ### Known security gaps (as previously confirmed across this governance program, re-verified fresh for this specification)
 
 - Non-rejecting global JWT guard (item 2 above).
 - Unverified `x-user-role` header trust in both `PermissionsGuard`'s fallback and `RolesGuard`'s direct read (items 1–2 above).
 - No unit test coverage for `JwtAuthContextGuard` or `RolesGuard` — a testing gap that compounds the risk of the above, since neither guard's actual behavior is regression-protected today.
+- The full extent of genuinely open endpoints is broader than any two-file inventory suggests (item 4 above) — this must be treated as a design constraint (handler-level metadata check) for PRTS-001, not resolved via a maintained list of exceptions.
 
 ### Repository structure
 
@@ -101,8 +105,8 @@ All relevant files are colocated under three directories: `src/identity/` (JWT/A
 ### Target authentication flow
 
 1. `JwtAuthContextGuard` continues to run globally and continues to be non-blocking when **no credential is presented at all** — this preserves every endpoint that intentionally allows anonymous or header-stand-in access today (unchanged, backward compatible).
-2. When a credential **is presented** (`Authorization: Bearer` or `x-api-key`) and verification fails, the guard must **no longer silently discard the failure**. The verification services already throw the correct, specific `UnauthorizedException` — the target behavior is for that exception to propagate to the caller, resulting in a real `401 Unauthorized` response, instead of being caught and ignored.
-3. On successful verification, behavior is unchanged: `request.verifiedActor` is attached exactly as today.
+2. **Corrected per Condition Resolution CR-T-001**: when a credential **is presented** (`Authorization: Bearer` or `x-api-key`) and verification fails, the guard rejects the request **only if the resolved route handler already carries a `PERMISSIONS_KEY` or `ROLES_KEY` reflector metadata entry** (i.e., the route already requires some actor-based check today, via `@RequirePermissions(...)` or `@Roles(...)`). When the resolved handler carries no such metadata — confirmed to include `health.controller.ts`, `observability.controller.ts`, every unauthenticated endpoint in `identity.controller.ts`, and the undecorated `GET` methods in `parts.controller.ts`/`vehicles.controller.ts` — an invalid credential is tolerated exactly as today, and the request proceeds with no verified actor attached. The verification services already throw the correct, specific `UnauthorizedException`; the target behavior is for that exception to propagate only in the conditional case above, never unconditionally.
+3. On successful verification, behavior is unchanged: `request.verifiedActor` is attached exactly as today, regardless of whether the target handler requires it.
 
 ### Target authorization flow
 
@@ -112,7 +116,7 @@ All relevant files are colocated under three directories: `src/identity/` (JWT/A
 
 ### JWT validation (target)
 
-A presented JWT is either successfully verified (attaches `verifiedActor`) or causes a rejected request (`401`) — there is no longer a third, silent outcome where an invalid JWT is treated as if it were absent.
+For any route that already requires a permission or role (`PERMISSIONS_KEY`/`ROLES_KEY` metadata present), a presented JWT is either successfully verified (attaches `verifiedActor`) or causes a rejected request (`401`) — there is no longer a silent outcome where an invalid JWT is treated as if it were absent, for these routes specifically. For a route that requires no permission or role today (confirmed examples: `/health*`, `/metrics`, `identity.controller.ts`'s unauthenticated endpoints, the undecorated `parts`/`vehicles` `GET` methods), an invalid or expired JWT continues to be tolerated exactly as today — this is a deliberate, evidenced scope boundary (CR-T-001), not an oversight.
 
 ### Role resolution / Permission evaluation (target)
 
@@ -136,20 +140,20 @@ The boundary between "authentication" (`src/identity/`) and "authorization" (`sr
 
 ### Dependency direction (target)
 
-Unchanged: `src/common/permissions/` and `src/common/rbac/` depend on types from `src/identity/` (via `RequestActor`, already the case today); `src/identity/` does not depend on either. No new dependency edge is introduced.
+**Corrected per Condition Resolution CR-T-002** (`docs/reviews/DGX3_PLATFORM_REMEDIATION_CONDITION_RESOLUTION_1.md`): the actual, confirmed direction is the reverse of an earlier draft of this section. `src/identity/jwt-auth-context.guard.ts` imports the `RequestActor` type from `src/common/permissions/request-actor.ts`; `request-actor.ts` itself imports only `Role` from `@prisma/client` and nothing from `src/identity/`. The correct statement is: **`src/identity/` depends on `src/common/permissions/`** (via the `RequestActor` type it imports); no file in `common/permissions` or `common/rbac` depends on `src/identity/`; no cycle exists in either direction. This remediation introduces no new dependency edge and does not change this direction.
 
 ---
 
 ## 4. Remediation Scope
 
-### PRTS-001 — Stop Discarding Verification Failures in `JwtAuthContextGuard`
-- **Purpose**: Close the "invalid/expired credential is silently treated as anonymous" gap.
+### PRTS-001 — Stop Discarding Verification Failures in `JwtAuthContextGuard`, Conditionally on Handler Requirements
+- **Purpose**: Close the "invalid/expired credential is silently treated as anonymous" gap, without breaking any route that intentionally requires no actor.
 - **Current behavior**: `canActivate` wraps `verifyAccessToken`/`ApiKeysService.verify` in `try { ... } catch { /* leave verifiedActor unset */ }`, then unconditionally `return true`.
-- **Target behavior**: When a credential is presented and verification throws, the guard allows that exception to propagate (or re-throws an equivalent `UnauthorizedException`) instead of catching and continuing. When no credential is presented, behavior is unchanged (`return true`, no verified actor).
+- **Target behavior (corrected per Condition Resolution CR-T-001)**: `canActivate` uses the same `Reflector`-based pattern already used by `PermissionsGuard`/`RolesGuard` to check whether the resolved handler carries `PERMISSIONS_KEY` or `ROLES_KEY` metadata (i.e., whether the route already requires some actor-based check via `@RequirePermissions(...)` or `@Roles(...)`). When a credential is presented, verification throws, **and** the handler carries such metadata, the guard allows the exception to propagate (or re-throws an equivalent `UnauthorizedException`) instead of catching and continuing. When the handler carries no such metadata — confirmed to include `health.controller.ts`, `observability.controller.ts`, every unauthenticated endpoint in `identity.controller.ts`, and the undecorated `GET` methods in `parts.controller.ts`/`vehicles.controller.ts` (§2, "Known inconsistencies," item 4) — an invalid credential is tolerated exactly as today. When no credential is presented at all, behavior is unchanged regardless of the handler (`return true`, no verified actor).
 - **Files expected to change**: `src/identity/jwt-auth-context.guard.ts`. A new `src/identity/jwt-auth-context.guard.spec.ts` (does not exist today) should be added.
 - **Dependencies**: None — this is the foundational, lowest-risk activity and should land first.
-- **Expected verification**: Unit tests proving (a) no credential → allowed, no verified actor; (b) valid credential → allowed, verified actor attached; (c) invalid/expired/revoked credential → rejected with `UnauthorizedException`. Full existing suite re-run to confirm no endpoint that previously tolerated an invalid-but-present credential now breaks unexpectedly.
-- **Risk**: **Medium** — any real caller currently sending an invalid or expired token (rather than no token) to an otherwise-open endpoint would newly receive a `401` instead of silent pass-through. This is the correct behavior, but is a genuine behavior change for that specific case.
+- **Expected verification**: Unit tests proving (a) no credential, any handler → allowed, no verified actor; (b) valid credential, any handler → allowed, verified actor attached; (c) invalid/expired/revoked credential, handler with `PERMISSIONS_KEY`/`ROLES_KEY` metadata → rejected with `UnauthorizedException`; (d) invalid/expired/revoked credential, handler with no such metadata → allowed, no verified actor (unchanged from today). Full existing suite re-run to confirm the auth endpoints, `health`/`metrics`/undecorated `GET` routes named above are unaffected.
+- **Risk**: **Medium, narrowed by this correction** — the original design's blast radius (rejecting on every route, including genuinely open ones) has been eliminated by conditioning rejection on existing handler metadata. Residual risk is limited to any real caller currently sending an invalid/expired token to a route that *already* requires a permission or role — which is the intended, correct behavior change, not a regression.
 - **Rollback strategy**: Revert `jwt-auth-context.guard.ts` to the prior catch-and-continue behavior; no other file depends on this change in a way that would prevent a clean, single-file revert.
 
 ### PRTS-002 — Introduce an Opt-In "Require Verified Actor" Enforcement Mechanism
@@ -165,12 +169,25 @@ Unchanged: `src/common/permissions/` and `src/common/rbac/` depend on types from
 ### PRTS-003 — Migrate `RolesGuard`'s Three Real Controllers onto `PermissionsGuard`
 - **Purpose**: Close the "verified JWT is never consulted" gap specific to `RolesGuard`, and unify every controller onto a single authorization path.
 - **Current behavior**: `integration.controller.ts`, `parts.controller.ts`, `vehicles.controller.ts` use `@UseGuards(RolesGuard)` + `@Roles(...)`, reading `x-user-role` directly and never consulting `getRequestActor()` or any verified actor.
-- **Target behavior**: Each controller uses `@UseGuards(PermissionsGuard)` + `@RequirePermissions(...)`, mapped from its current `@Roles(...)` list via `ROLE_PERMISSIONS` (or an equivalent, newly-added permission grouping if no existing permission cleanly covers a given role combination — to be determined per-controller during implementation, not decided here).
-- **Files expected to change**: `src/integration/integration.controller.ts`, `src/parts/parts.controller.ts`, `src/vehicles/vehicles.controller.ts`; possibly `src/common/permissions/permission.ts` and `role-permissions.ts` if a needed permission does not yet exist for one of these controllers' exact role combinations (this would be an additive change to an existing file, not a new business capability, and remains within Platform Remediation's authorized scope per the PRA's "Permissions normalization" item).
+- **Target behavior (mapping finalized per Condition Resolution CR-T-003)**: Each controller uses `@UseGuards(PermissionsGuard)` + `@RequirePermissions(...)`. Direct inspection of `ROLE_PERMISSIONS` confirmed that **no existing permission string can be reused for any of these three controllers' role combinations without either over-granting** (e.g., `system.admin`/`integration.manage`/`parts.manage` are all already held by `GENERAL_MANAGER`, which is not in any of these controllers' current `@Roles(...)` lists) **or under-granting** (e.g., no existing permission covers `STOREKEEPER`'s current access to `POST /parts`). The following new, precisely-scoped permission strings must be added to `PERMISSIONS` (`permission.ts`) and granted to exactly the roles listed, in `ROLE_PERMISSIONS` (`role-permissions.ts`):
+
+  | Controller | Endpoint(s) | Current `@Roles(...)` | New permission | Exact role grant |
+  |---|---|---|---|---|
+  | `integration` | `POST /integration/sync/vehicles`, `POST /integration/sync/parts` | `SYSTEM_ADMINISTRATOR` | `integration.sync` | `SYSTEM_ADMINISTRATOR`, `OWNER` only |
+  | `integration` | `GET /integration/dead-letters` | `SYSTEM_ADMINISTRATOR`, `DATA_QUALITY_REVIEWER` | `integration.deadLetters.read` | `SYSTEM_ADMINISTRATOR`, `OWNER`, `DATA_QUALITY_REVIEWER` only |
+  | `integration` | `PATCH /integration/dead-letters/:id/resolve` | `SYSTEM_ADMINISTRATOR`, `DATA_QUALITY_REVIEWER` | `integration.deadLetters.resolve` | `SYSTEM_ADMINISTRATOR`, `OWNER`, `DATA_QUALITY_REVIEWER` only |
+  | `parts` | `POST /parts` | `SYSTEM_ADMINISTRATOR`, `PARTS_MANAGER`, `STOREKEEPER` | `parts.create` | `SYSTEM_ADMINISTRATOR`, `OWNER`, `PARTS_MANAGER`, `STOREKEEPER` only |
+  | `parts` | `POST /parts/match-candidates/run`, `GET /parts/match-candidates`, `PATCH /parts/match-candidates/:id/review` | `SYSTEM_ADMINISTRATOR`, `PARTS_MANAGER` | `parts.matchCandidates.manage` | `SYSTEM_ADMINISTRATOR`, `OWNER`, `PARTS_MANAGER` only |
+  | `parts` | `GET /parts`, `GET /parts/:id` | *(none — open today)* | None required | Remains open; a deliberate future scope decision, not part of this remediation (see §5, Out of Scope) |
+  | `vehicles` | `POST /vehicles`, `PATCH /vehicles/:id/attribute-correction` | `SYSTEM_ADMINISTRATOR`, `BRANCH_MANAGER`, `PARTS_MANAGER` | `vehicle.create` (create), `vehicle.correct` (correction) | `SYSTEM_ADMINISTRATOR`, `OWNER`, `BRANCH_MANAGER`, `PARTS_MANAGER` only |
+  | `vehicles` | `GET /vehicles`, `GET /vehicles/vin/:vin`, `GET /vehicles/:id` | *(none — open today)* | None required | Remains open; same future scope decision as `parts`' open `GET` endpoints |
+
+  Every new permission's role grant is an exact match to that endpoint's current `@Roles(...)` list — no role gains or loses access as a result of this migration.
+- **Files expected to change**: `src/integration/integration.controller.ts`, `src/parts/parts.controller.ts`, `src/vehicles/vehicles.controller.ts`; `src/common/permissions/permission.ts` (seven new permission constants: `integration.sync`, `integration.deadLetters.read`, `integration.deadLetters.resolve`, `parts.create`, `parts.matchCandidates.manage`, `vehicle.create`, `vehicle.correct`); `src/common/permissions/role-permissions.ts` (the corresponding grants above) — additive changes to existing files, not a new business capability, remaining within the Platform Remediation Authorization's "Permissions normalization" scope.
 - **Dependencies**: PRTS-001, PRTS-002 (the unified path should exist and behave correctly before real controllers move onto it).
-- **Expected verification**: Full regression pass of each controller's existing integration tests (if any) and manual/automated confirmation that every currently-valid caller (real role via header or real role via JWT claim) continues to succeed, and every currently-rejected caller continues to be rejected — behavior-preserving migration, not a permission-model change.
-- **Risk**: **High** — this is the remediation activity with the greatest regression surface, since it changes the actual guard evaluated on three real, currently-functioning controllers. Each controller should be migrated and verified individually, not as a single combined change.
-- **Rollback strategy**: Per-controller revert (`@UseGuards(RolesGuard)` + `@Roles(...)` restored) is possible independently for any one of the three controllers without affecting the other two, since they share no code beyond the common guard/decorator infrastructure.
+- **Expected verification**: Full regression pass of each controller's existing integration tests (if any); a direct, per-permission confirmation (using the mapping table above as the acceptance artifact) that every currently-valid caller (real role via header or real role via JWT claim) continues to succeed, and every currently-rejected caller continues to be rejected — behavior-preserving migration, not a permission-model change.
+- **Risk**: **High** — this is the remediation activity with the greatest regression surface, since it changes the actual guard evaluated on three real, currently-functioning controllers, and adds new permission strings that must be granted with exact precision. Each controller should be migrated and verified individually, not as a single combined change.
+- **Rollback strategy**: Per-controller revert (`@UseGuards(RolesGuard)` + `@Roles(...)` restored) is possible independently for any one of the three controllers without affecting the other two, since they share no code beyond the common guard/decorator infrastructure. The seven new permission constants may remain defined but unused without any effect if a controller's migration is rolled back.
 
 ### PRTS-004 — Test Suite Additions
 - **Purpose**: Close the confirmed testing gap (`jwt-auth-context.guard.ts` and `roles.guard.ts` currently have no dedicated unit tests) so this remediation — and any future change to these files — is regression-protected.
@@ -206,6 +223,7 @@ Explicitly excluded from this technical specification and from any remediation p
 - Any new API endpoint or expansion of the existing endpoint surface — this remediation changes *how* existing endpoints authenticate/authorize callers, never *what* they do or *how many* there are.
 - Branch/warehouse scoping enforcement (`rbac-permissions.md`'s own documented "Scope limitations") — a real, larger, separately-scoped effort explicitly deferred by that document's own text; not part of this remediation.
 - Full removal of the legacy `x-user-role` header-stand-in path for endpoints that intentionally still support it — only its *silent-fallback-on-failure* behavior (PRTS-001) and its *use in place of a verified actor for opted-in, high-assurance permissions* (PRTS-002) are addressed; a wholesale deprecation of header-based auth is a distinct, larger, future decision, not part of this remediation.
+- Adding a permission requirement to the currently-open `GET /parts`, `GET /parts/:id`, `GET /vehicles`, `GET /vehicles/vin/:vin`, and `GET /vehicles/:id` endpoints (identified during Condition Resolution CR-T-003/CR-T-001) — these remain open exactly as today; whether to tighten them is a future, separate scope decision for the Business/Operational Owner (once assigned), not this remediation.
 
 ---
 
@@ -225,12 +243,12 @@ Mandatory, non-negotiable for every remediation activity above:
 
 ## 7. Verification Plan
 
-- **Unit verification**: new/updated specs for `jwt-auth-context.guard.ts`, `permissions.guard.ts`, and (if retained) `roles.guard.ts`, covering every scenario named in §4's per-activity "Expected verification."
-- **Integration verification**: existing integration-spec suites for `integration`, `parts`, and `vehicles` controllers (if present) re-run against the migrated guards; new integration coverage added if none exists today for these three controllers' authorization paths specifically.
-- **Regression verification**: full existing repository unit + integration test suite run to completion with zero new failures, beyond the intentional PRTS-001 behavior change (invalid/expired credentials now rejected instead of silently tolerated).
+- **Unit verification**: new/updated specs for `jwt-auth-context.guard.ts`, `permissions.guard.ts`, and (if retained) `roles.guard.ts`, covering every scenario named in §4's per-activity "Expected verification" — including PRTS-001's four corrected scenarios (no credential; valid credential; invalid credential on a handler requiring a permission/role; invalid credential on a handler requiring none).
+- **Integration verification**: existing integration-spec suites for `integration`, `parts`, and `vehicles` controllers (if present) re-run against the migrated guards; new integration coverage added if none exists today for these three controllers' authorization paths specifically; explicit confirmation that `health.controller.ts`, `observability.controller.ts`, `identity.controller.ts`'s unauthenticated endpoints, and the undecorated `parts`/`vehicles` `GET` methods all continue to tolerate an invalid `Authorization` header exactly as today.
+- **Regression verification**: full existing repository unit + integration test suite run to completion with zero new failures, beyond the intentional PRTS-001 behavior change (invalid/expired credentials now rejected, but only on routes that already require a permission or role — never on the confirmed-open routes named above).
 - **Security verification**: direct, reproducible code re-inspection (not inference) confirming no remaining path allows an unverified header to satisfy a verified-actor requirement, for any endpoint opted into PRTS-002.
 - **Repository verification**: a diff review confirming every changed file falls within the three named directories (plus the three named controllers), with no schema, migration, or new top-level module present.
-- **Architecture verification**: confirmation that the dependency direction (`common/permissions`, `common/rbac` → `identity`) is unchanged, and that no DGX-3.0-named file was touched.
+- **Architecture verification**: confirmation that the dependency direction (`identity` → `common/permissions`, per the correction in §3 above; no file in `common/permissions`/`common/rbac` depends on `identity`) is unchanged, and that no DGX-3.0-named file was touched.
 - **Independent verification**: PRTS-005, performed by a reviewer distinct from the implementer.
 
 ---
