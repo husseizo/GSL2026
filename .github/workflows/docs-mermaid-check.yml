@@ -26,7 +26,12 @@ jobs:
           node-version: "20"
 
       - name: Install mermaid-cli
-        run: npm install -g @mermaid-js/mermaid-cli
+        # Pinned (not "@latest"): an unpinned install makes this workflow's
+        # result depend on whatever version npm resolves as latest on the
+        # day it happens to run, which can silently change behavior between
+        # runs. 11.16.0 is confirmed, by direct local validation, to parse
+        # every current mermaid block in this repository correctly.
+        run: npm install -g @mermaid-js/mermaid-cli@11.16.0
 
       - name: Extract and validate every mermaid block
         run: python3 scripts/ci/validate-mermaid-blocks.py

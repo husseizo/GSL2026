@@ -7,7 +7,7 @@
 ## Document Control
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | Document | DGX 3.0 Predictive Maintenance Specification v1.0 |
 | Capability | DGX 3.0 — Predictive Maintenance |
 | Current lifecycle stage | **Specified** (Capability Governance Standard §6, Level 1) — achieved through Specification Formal Review #1, condition resolution (CR-001 through CR-005), and final closure approval |
@@ -66,15 +66,18 @@ This specification deliberately avoids claims of the following kind, none of whi
 ## 2. Business Problem
 
 **Observed current problems** (confirmed real, from repository evidence):
+
 - Repeat workshop visits for the same or a related issue are already a tracked, real concern — `vehicle-lifecycle/repeat-repair-math.ts` exists specifically to detect them deterministically (same complaint, same DTC, same part, same system category), and `GarageJob.repeatRepairFlags` is a real, persisted relation backed by a real, currently-operating human review/resolution workflow, not merely a passive relation: each `RepeatRepairFlag` carries a real `status` (`POSSIBLE` → `CONFIRMED` / `WARRANTY_CANDIDATE` / `DISMISSED`) and real `resolvedById`/`resolvedAt`/`note` fields, and a real, existing controller endpoint lets a Workshop Supervisor resolve a flag, writing a real `AuditLog` entry in the process. `RepeatRepairFlag` and this existing review/resolution workflow are real Operational Core capabilities today — DGX 3.0 may consume their governed outputs as evidence but does not automatically own, redefine, or replace that workflow (§9, §49 `DGX3-ADR-0001`). The existence of this code and workflow is itself evidence that repeat repairs are a known, real operational problem today.
 - Maintenance risk is currently assessed only via a simple, deterministic, evidence-count-based scoring system (`twin-intelligence-math.ts`'s `computeMaintenanceRiskScore`/`computeSystemRisks`) — real, but limited to counting same-system events in a fixed trailing 365-day window with a linear scoring formula; it does not model time-to-event, does not use mileage as an input signal, and has no formal calibration or certification.
 - Diagnostic trouble codes are captured with structure (`DiagnosticCode.code`/`source`/`freezeFrame`) but, per that service's own code comment, are stored with "no AI interpretation of DTCs" — a real, current, explicitly acknowledged gap.
 
 **Potential future problems** (plausible, not yet confirmed by real measured evidence in this repository):
+
 - Missed maintenance intervals and unnecessary part replacement are named as concerns in the mission context and are consistent with the kind of workshop operation AIOS supports, but no real, measured baseline for either exists in this repository today.
 - Poor visibility of fleet-level or cross-vehicle risk — plausible given no fleet-aggregation view currently exists (see §42), but not measured.
 
 **Assumed problems requiring validation** (`ASSUMPTION`):
+
 - That vehicles are, in fact, serviced primarily reactively rather than on a real, tracked preventive schedule today — plausible given no `MaintenanceInterval`/`MaintenanceSchedule` entity exists in the schema, but not confirmed by any business-side measurement in this repository.
 - That inconsistent technician judgment is a material, quantified problem — asserted in the mission context, not measured here.
 
@@ -85,15 +88,15 @@ None of the above is presented as a confirmed fact where it is not.
 ## 3. Business Objectives
 
 | Objective | Metric | Baseline requirement | Target-setting authority | Data source | Measurement frequency | Accountable owner |
-|---|---|---|---|---|---|---|
-| Reduce avoidable unplanned breakdowns | Real rate of unplanned breakdown incidents per vehicle-year | A real, measured baseline must exist before any target is set (Governance Standard §17) | Business Owner (not yet assigned) | `GarageJob` (unplanned vs. scheduled), future `FailureEvent` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Improve early detection of maintenance needs | Real lead time between a risk flag and the confirmed need | No baseline exists (no risk-flag lead-time is currently measured) | Business Owner (not yet assigned) | Future `RiskAssessment` + `Outcome` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Reduce repeat repairs | Real repeat-repair rate | `RepeatRepairFlag` exists and is real evidence; no aggregate rate is currently reported | Business Owner (not yet assigned) | `GarageJob.repeatRepairFlags` | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Improve maintenance scheduling / workshop planning | Real technician/bay utilization against predicted risk queue | No baseline | Operational Owner (not yet assigned) | `GarageJob`, future workshop-priority queue (§42) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Improve parts readiness for predicted maintenance | Real stockout rate for parts tied to a high-risk prediction | No baseline; DGX 2.0's own inventory metrics are a real, related but distinct measurement (see §45 — DGX 2.0 is beneficial, not a dependency) | Business Owner (not yet assigned) | `InventoryItemMetric` (DGX 2.0's own real model), future `RiskAssessment` | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Improve technician decision confidence | Real technician acceptance/override rate of DGX 3.0 recommendations | No prior recommendation exists to baseline against | Business Owner (not yet assigned) | Future `RecommendationDecision` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Improve customer communication about maintenance risk | Real customer-facing communication accuracy/timeliness | No baseline; customer communication is explicitly out of scope for DGX 3.0 to originate directly (§4, §8) | Business Owner (not yet assigned) | N/A until a consuming capability is specified | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
-| Create traceable maintenance-risk evidence | Real audit-completeness rate for every risk assessment produced | None required — this is a design requirement of the capability itself, not a business KPI with a numeric target | Certification Authority | Future audit trail (§29) | Every assessment, continuously |
+| --- | --- | --- | --- | --- | --- | --- |
+| Reduce avoidable unplanned breakdowns | Real rate of unplanned breakdown incidents per vehicle-year | A real, measured baseline must exist before any target is set (Governance Standard §17) | Business Owner (not yet assigned) | `GarageJob` (unplanned vs. scheduled), future `FailureEvent` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Improve early detection of maintenance needs | Real lead time between a risk flag and the confirmed need | No baseline exists (no risk-flag lead-time is currently measured) | Business Owner (not yet assigned) | Future `RiskAssessment` + `Outcome` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Reduce repeat repairs | Real repeat-repair rate | `RepeatRepairFlag` exists and is real evidence; no aggregate rate is currently reported | Business Owner (not yet assigned) | `GarageJob.repeatRepairFlags` | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Improve maintenance scheduling / workshop planning | Real technician/bay utilization against predicted risk queue | No baseline | Operational Owner (not yet assigned) | `GarageJob`, future workshop-priority queue (§42) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Improve parts readiness for predicted maintenance | Real stockout rate for parts tied to a high-risk prediction | No baseline; DGX 2.0's own inventory metrics are a real, related but distinct measurement (see §45 — DGX 2.0 is beneficial, not a dependency) | Business Owner (not yet assigned) | `InventoryItemMetric` (DGX 2.0's own real model), future `RiskAssessment` | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Improve technician decision confidence | Real technician acceptance/override rate of DGX 3.0 recommendations | No prior recommendation exists to baseline against | Business Owner (not yet assigned) | Future `RecommendationDecision` (§9) | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Improve customer communication about maintenance risk | Real customer-facing communication accuracy/timeliness | No baseline; customer communication is explicitly out of scope for DGX 3.0 to originate directly (§4, §8) | Business Owner (not yet assigned) | N/A until a consuming capability is specified | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` | Not yet assigned |
+| Create traceable maintenance-risk evidence | Real audit-completeness rate for every risk assessment produced | None required — this is a design requirement of the capability itself, not a business KPI with a numeric target | Certification Authority | Future audit trail (§29) | Every assessment, continuously | Certification Authority |
 
 No target percentage is asserted anywhere in this table. Every numeric target is `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN`, consistent with DGX 2.0's own certification-design precedent of never asserting a threshold without approved evidence.
 
@@ -106,7 +109,7 @@ No target percentage is asserted anywhere in this table. Every numeric target is
 ### Distinctions (mandatory — DGX 3.0 must not silently absorb any of these)
 
 | Domain | Relationship to DGX 3.0 | Real status in this repository |
-|---|---|---|
+| --- | --- | --- |
 | **Preventive Maintenance** | A maintenance *policy* (service on a fixed schedule); DGX 3.0 may inform when a preventive schedule should be adjusted, but does not itself define the manufacturer schedule. | No `MaintenanceInterval`/`MaintenanceSchedule` entity exists today (§9 gap). |
 | **Condition-Based Maintenance** | A closely related philosophy (act on observed condition, not a fixed calendar); DGX 3.0's risk scoring is a form of this, but "condition-based maintenance" as an industry term also implies real sensor/condition-monitoring data DGX 3.0 does not have access to (§10). | No condition-monitoring/telematics source exists (`ASSUMPTION` gap confirmed by direct repository search — zero matches for "telematics" anywhere in `src/`). |
 | **Diagnostics** | A real, separate, already-implemented capability (`diagnostics/`) that answers "what is wrong right now, given an active complaint or session." DGX 3.0 *consumes* diagnostic history as evidence; it does not perform diagnosis itself. | Real — `DiagnosticSession`, `DiagnosticCode`, `Symptom`, `SuspectedCause` all exist today. |
@@ -122,7 +125,7 @@ No target percentage is asserted anywhere in this table. Every numeric target is
 ## 5. Users and Accountability
 
 | Role | Allowed actions | Decisions they may make | Decisions they may NOT delegate to the system | Evidence they must review | Acknowledgement requirement | Escalation authority | Audit responsibility |
-|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | **Technician** | View vehicle/component risk; record inspection/repair outcomes; provide feedback | Whether to act on a recommendation during a real job | Whether a repair was actually necessary or safe to defer | Evidence panel for the specific vehicle/component | Must acknowledge or override any recommendation before closing a related job | Workshop Supervisor | Own outcome entries |
 | **Workshop Supervisor** | View workshop priority queue; reassign; escalate | Workshop-level prioritization of which flagged vehicles get attention first | Whether a specific technician's override was "correct" without review | Aggregate risk queue + individual evidence on escalation | Must review disagreement/override patterns | Service Advisor / Branch Manager | Escalation decisions |
 | **Service Advisor** | View vehicle risk; communicate findings to customer (through an existing, separate customer-communication channel, not DGX 3.0 itself) | Whether/how to present a risk finding to a customer | Any warranty, pricing, or liability determination | Evidence + explanation panel | Must acknowledge before customer-facing communication | Branch Manager | Customer-facing communication accuracy |
@@ -142,7 +145,7 @@ No role above may have a repair, warranty, or customer-charging decision delegat
 ## 6. Primary Use Cases
 
 | Use case | Classification | Business question | Decision supported | Minimum evidence | Confidence behavior | Human reviewer | Known safety limitation | False-positive impact | False-negative impact |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Engine oil service risk (mileage/date-based) | **Included in Initial Specification** | Is this vehicle due/overdue for an oil service? | Schedule/recommend service | Real `mileageAtCheckIn` history + service event dates | `INSUFFICIENT_HISTORY` if <2 real service events | Service Advisor | Mileage-only signal if odometer not read continuously (only captured at check-in) | Unnecessary service reminder | Missed service interval |
 | Brake wear risk (recurrence/complaint-based) | **Included in Initial Specification** | Is there recurring evidence of brake-system issues? | Inspect brakes | Real complaint/DTC/repeat-repair evidence classified to `BRAKE` system (existing `twin-intelligence-math.ts` category) | `LOW` risk band if evidence count is low | Technician | No direct wear-sensor data exists | Unneeded inspection | Missed brake degradation — safety-relevant, defaults to human inspection (§27) |
 | Battery degradation | **Included in Initial Specification** | Is there recurring electrical-system evidence consistent with battery health? | Test/replace battery | Real `ELECTRICAL`-classified evidence + real `BatteryTest` data — **`ASSUMPTION`: no dedicated `BatteryTest` entity exists in the schema today; this use case's evidence is currently limited to complaint/DTC recurrence only** | Confidence capped without a real battery-test data source | Technician | Cannot currently model calendar-based battery aging without a real test-history source | Unneeded test | Missed failure risk (starting/electrical) |
@@ -200,7 +203,7 @@ None of the above is implemented, referenced as available, or implied as forthco
 Every entity below is **conceptual** — none is created, migrated, or implied to already exist as a DGX-3.0-owned table unless explicitly marked "Real, existing" with its actual current location.
 
 | Entity | Purpose | Source system | System of record | Data owner | Mandatory for Phase A? | Real status |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | Vehicle | The subject of every assessment | Operational Core | Operational Core (`Vehicle` model) | Data Steward | Yes | **Real, existing** (`vin`, `brand`, `model`, `variant`, `modelYear`, `engineCode` — `vin` is nullable and unique) |
 | VIN | Vehicle identity | Vehicle | Operational Core | Data Steward | Yes | **Real** — nullable field; not every real vehicle record has one populated |
 | Vehicle Configuration / Make / Model / Model Year / Engine Code / Transmission Code | Segmentation for risk modeling and bias evaluation (§39) | Vehicle | Operational Core | Data Steward | Yes (make/model/year/engine), No (transmission code) | **Real** for make/model/modelYear/engineCode; **no dedicated transmission-code field found** — `ASSUMPTION` gap |
@@ -251,7 +254,7 @@ Every entity below is **conceptual** — none is created, migrated, or implied t
 ## 10. Data Source Register
 
 | Source | Classification |
-|---|---|
+| --- | --- |
 | AIOS Operational Core (Vehicle, GarageJob, Diagnostics, Inspections, Parts) | **Exists and verified** |
 | Workshop repair orders / service history | **Exists and verified** (as `GarageJob` history) |
 | SAP Business One | **Exists and verified** as a real, read-only adapter (`integration/adapters/sap-business-one.adapter.ts`) for commercial data; not confirmed to carry maintenance-specific data |
@@ -286,7 +289,7 @@ Minimum standards (design requirements for a future engineering phase, not yet i
 **Data quality outcomes** (proposed, mirroring the honest-abstention discipline already established for DGX 2.0's `HISTORICAL_METRICS_PERSISTED`-style gates):
 
 | Outcome | Meaning |
-|---|---|
+| --- | --- |
 | `ACCEPTED` | Real, sufficient, consistent evidence |
 | `ACCEPTED_WITH_LIMITATIONS` | Real evidence exists but with a named, disclosed gap (e.g., mileage only available at check-in) |
 | `INSUFFICIENT` | Not enough real evidence to support any assessment |
@@ -312,7 +315,7 @@ This specification does **not** claim completeness for any taxonomy level — th
 ## 13. Prediction Types
 
 | Prediction category | Meaning |
-|---|---|
+| --- | --- |
 | Maintenance due | Approaching a real, known interval |
 | Maintenance overdue | Past a real, known interval |
 | Degradation detected | Real evidence trend consistent with wear |
@@ -330,7 +333,7 @@ Every prediction must state: prediction target, time horizon (§15), risk score 
 ## 14. Risk Scoring Model
 
 | Field | Values |
-|---|---|
+| --- | --- |
 | Risk Score | 0-100 |
 | Risk Band | `LOW` / `MODERATE` / `HIGH` / `CRITICAL` |
 | Confidence | `LOW` / `MEDIUM` / `HIGH` |
@@ -346,7 +349,7 @@ The real, existing four-level confidence gate (`computeOverallConfidence`: `INSU
 ## 15. Time-Horizon Model
 
 | Horizon type | Example | Real data support today |
-|---|---|---|
+| --- | --- | --- |
 | Calendar-based | Next 7/30/90 days | Supportable — real `occurredAt` timestamps exist on service/job records |
 | Mileage-based | Next mileage threshold | Partially supportable — `mileageAtCheckIn` exists but is not continuous; a mileage-based horizon can only be estimated between discrete real readings |
 | Usage-based | Next operating cycle | **Not supportable today** — no usage-profile data exists |
@@ -379,7 +382,7 @@ Raw model internals (e.g., an internal ensemble weight) must not be exposed wher
 ## 18. AI and Analytics Strategy
 
 | Phase | Approach | Required data volume | Label requirement | Explainability | Calibration requirement | Operational risk | Certification burden |
-|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | **Phase A** | Deterministic rules, manufacturer/business interval rules, trend/recurrence detection, transparent evidence-count scoring (extending the real, existing `twin-intelligence-math.ts`/`repeat-repair-math.ts`) | None beyond what already exists | None — deterministic | Full (every score traces to a countable evidence item) | Not applicable (not a probability) | Low | Lower — behavior is fully deterministic and testable |
 | **Later phases** (not authorized here) | Survival analysis / time-to-event models, gradient boosting, probabilistic models, sequence models, multimodal models, fleet-level learning, component-specific models | Requires a real, substantial, labeled `FailureEvent` dataset that does not exist today | Real, confirmed failure labels | Requires a dedicated explanation layer (§17) | Requires formal calibration and certification (§14, §33) before any probability-style claim | Higher | Higher — requires the full DGX 2.0-style certification apparatus, adapted for time-to-event/classification metrics (§32) |
 
@@ -391,7 +394,7 @@ Raw model internals (e.g., an internal ensemble weight) must not be exposed wher
 
 Proposed precedence (subject to a required ADR, DGX3-ADR-0004, and legal/safety review before adoption — not established as final by this specification alone):
 
-```
+```text
 Safety-critical approved rule
 >
 Manufacturer requirement (where real, approved knowledge exists — §20)
@@ -424,7 +427,7 @@ Unapproved, internet-sourced repair advice must never become operational evidenc
 ## 21. Operational Core Integration
 
 | Domain | Read contract | Proposed write contract | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Vehicle | Read `Vehicle` (VIN, make/model/year/engine) | None — DGX 3.0 never writes to `Vehicle` | |
 | Workshop/Garage | Read `GarageJob`, `GarageJobLine`, `JobStatusHistory`, `RepeatRepairFlag` | Proposed: write a new, DGX-3.0-owned `RiskAssessment`/`MaintenanceRecommendation` record, never a write to `GarageJob` itself | Preserves capability isolation (§23); `RepeatRepairFlag`'s own real status/resolution workflow (§9) remains Operational Core's — read-only for DGX 3.0, never written to or redefined by it |
 | Diagnostics | Read `DiagnosticSession`, `DiagnosticCode`, `Symptom`, `SuspectedCause` | None | |
@@ -462,7 +465,7 @@ Per the Foundation's own invariant, any future component of DGX 3.0 that calls a
 ## 24. API Contract Requirements (conceptual only)
 
 | API (conceptual) | Actor | Purpose | Authorization | Insufficient-evidence behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Request vehicle risk assessment | Technician/Service Advisor | Trigger a real, on-demand assessment | New permission, e.g. `maintenance-risk.generate` | Returns an honest `INSUFFICIENT`/`insufficient evidence` result, never a fabricated score |
 | Retrieve latest assessment | Any authorized viewer | Read the current risk state | `maintenance-risk.read` | Returns the last honest state, including if it was `INSUFFICIENT` |
 | Retrieve assessment history | Planner/Reviewer | Trend review | `maintenance-risk.read` | — |
@@ -519,7 +522,7 @@ This specification does not claim any of the gaps above are resolved, and any fu
 ## 27. Safety and Decision Limits — Safety Decision Matrix
 
 | Class | Example | Required reviewer | Acknowledgement | Evidence threshold | Escalation | Logging | Expiry | Override rule |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Informational** | "Vehicle has 3 prior brake complaints" | None required | None required | Any real evidence | None | Standard | None | N/A |
 | **Advisory** | "Consider inspecting cooling system" | Technician | Recommended | `PARTIAL` or better | Workshop Supervisor on disagreement | Standard | Time-boxed (`TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN`) | Freely overridable, recorded |
 | **Operational** | "Vehicle overdue for oil service" | Service Advisor | Required before customer communication | `SUFFICIENT` | Branch Manager | Full audit | Time-boxed | Overridable with reason, recorded |
@@ -601,7 +604,7 @@ A future certification dataset would need real coverage of: historical maintenan
 ## 35. Success Metrics
 
 | Category | Example metrics | Status |
-|---|---|---|
+| --- | --- | --- |
 | Technical Quality | Calibrated risk quality, false-negative/positive rate, lead-time distribution, data-quality rejection accuracy | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
 | Operational Quality | Reviewer response time, recommendation acknowledgement rate, inspection completion, feedback capture rate | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
 | Business Value | Avoidable-breakdown reduction, repeat-repair reduction, workshop planning improvement, parts readiness improvement | `TO_BE_DEFINED_DURING_CERTIFICATION_DESIGN` |
@@ -628,7 +631,7 @@ Proposed metrics/logs: assessment volume, assessment latency, failed assessments
 ## 38. Failure Modes
 
 | Scenario | Safe behavior |
-|---|---|
+| --- | --- |
 | Missing/invalid VIN | Reject or flag for data-steward review; never guess an identity |
 | Mileage rollback | Flag as a data-quality conflict (§11); do not silently accept |
 | Duplicate service event, missing DTC timestamp | Flag for review; do not double-count evidence |
@@ -679,7 +682,7 @@ flowchart TD
 ## 42. User Experience Requirements (none implemented — no page exists today)
 
 | View | Phase status |
-|---|---|
+| --- | --- |
 | Vehicle Risk Overview | Phase A required (API-only initially — no web page exists in `services/web-portal/` today; confirmed by direct review of `src/pages/`) |
 | Component Risk Detail | Later phase (depends on a real `Component` entity, §9) |
 | Maintenance Timeline | Phase A required, API-only initially — real backend service (`vehicle-timeline.service.ts`) exists; no dedicated web page confirmed |
@@ -698,7 +701,7 @@ No page listed above currently exists in `services/web-portal/src/pages/` — th
 ## 43. Role and Permission Matrix (conceptual — new permission strings proposed, none implemented)
 
 | Action | Technician | Workshop Supervisor | Service Advisor | Fleet Manager | Parts Planner | Branch Manager | AIOS Administrator | Certification Reviewer |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | View risk | ✓ | ✓ | ✓ | ✓ | ✓ (signal only) | ✓ | ✓ | ✓ |
 | Request assessment | ✓ | ✓ | ✓ | — | — | — | — | — |
 | Acknowledge recommendation | ✓ | ✓ | ✓ | — | — | — | — | — |
@@ -718,7 +721,7 @@ Proposed new permission strings (e.g. `maintenance-risk.read`, `maintenance-risk
 ## 44. Phased Delivery Model (evaluated, not authorized)
 
 | Phase | Scope | Entry criteria | Exit criteria | Non-goals | Approval authority |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | **A** | Governed maintenance timeline, deterministic rules (extending real, existing logic), transparent risk scoring, manual review, the limited use-case set in §7 | This specification approved to Specified maturity (independent of `DGX3-ADR-0001` acceptance, §49); owners assigned (§47); pre-engineering gates, including all ten ADRs, met (§50) | Real, working deterministic capability, certified at least at a "Specified→Implemented" governance level, not yet certified for Pilot | Any ML model; any component-level prediction | Architecture Board + Business Owner |
 | **B** | Statistical degradation/recurrence models | Real, sufficient non-failure-labeled trend data confirmed | Measured improvement over Phase A's deterministic baseline, real evidence | Component-specific models | Architecture Board + Certification Authority |
 | **C** | Component-specific predictive models | A real `Component` entity and real component-level outcome data exist | Certified component-level predictions | Telematics integration | Architecture Board + Certification Authority |
@@ -734,7 +737,7 @@ These phases are proposed and refined from the mission's own suggested structure
 ## 45. Dependency Register
 
 | Dependency | Classification |
-|---|---|
+| --- | --- |
 | AI Foundation | **Mandatory** — DGX 3.0 must depend directly on it, per program context |
 | Knowledge Platform | **Mandatory** (for §20's knowledge-based recommendations) |
 | Operational Core (Vehicle, GarageJob, Diagnostics, Inspections) | **Mandatory** |
@@ -759,7 +762,7 @@ These phases are proposed and refined from the mission's own suggested structure
 ## 46. Risk Register
 
 | Risk | Probability | Impact | Mitigation | Owner | Trigger | Residual risk | Acceptance authority |
-|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | Insufficient failure labels | High (confirmed: no `FailureEvent` data exists) | High — blocks any calibrated model beyond Phase A | Scope Phase A to deterministic rules only (§7, §18) | Not yet assigned | Attempting Phase B/C without real labeled data | Remains until real data exists | Architecture Board |
 | Sparse maintenance history per vehicle | Medium | Medium — limits confidence | Honest confidence-gating (§14), never inflate | Not yet assigned | Low job count | Real, accepted (mirrors DGX 2.0's own small-sample honesty) | Business Owner |
 | Inconsistent mileage (check-in-only capture) | High (confirmed) | Medium | Disclose limitation explicitly (§9, §15) | Not yet assigned | Any mileage-based horizon | Real, accepted until continuous odometer data exists | Business Owner |
@@ -788,7 +791,7 @@ No owner is invented where none is assigned — "Not yet assigned" appears throu
 ## 47. Governance
 
 | Role | Status |
-|---|---|
+| --- | --- |
 | Capability owner | Not yet assigned |
 | Business owner | Not yet assigned |
 | Technical owner | Not yet assigned |
@@ -808,7 +811,7 @@ Decisions requiring an ADR, Architecture Review, Governance approval, Certificat
 ## 48. Change Control
 
 | Change class | Approval required | Versioning |
-|---|---|---|
+| --- | --- | --- |
 | Editorial | Any reviewer | Patch-level document revision |
 | Clarification | Architecture Authority | Patch-level |
 | Non-breaking requirement addition | Architecture Authority | Minor version |
@@ -860,7 +863,7 @@ This document is acceptable only if: the capability boundary is explicit (§4, �
 This appendix records the resolution of the five conditions attached to the `APPROVED_WITH_CONDITIONS` verdict issued in `docs/reviews/DGX3_SPECIFICATION_FORMAL_REVIEW_1.md`. Final closure verification was independently performed by the DGX 3.0 Final Maturity Approval Authority, which issued the `APPROVED_AS_SPECIFIED` verdict recorded in that report's Condition Closure Addendum. This closure **advances DGX 3.0 to Specified maturity; it does not authorize engineering, and does not resolve `DGX3-ADR-0001`**.
 
 | Field | CR-001 | CR-002 | CR-003 | CR-004 | CR-005 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Condition | RepeatRepairFlag workflow accuracy | PermissionsGuard and RolesGuard accuracy | AuditLog.actorId nullability | DGX3-ADR-0001 timing | Cross-document status synchronization |
 | Review finding reference | `DGX3-REV1-ARCH-001` | `DGX3-REV1-SEC-001`, `DGX3-REV1-SEC-002` | `DGX3-REV1-DATA-001` | `DGX3-REV1-ARCH-002` | `DGX3-REV1-GOV-001`, `DGX3-REV1-GOV-002` |
 | Files changed | This specification (§2, §6, §7, §9, §21) | This specification (§26) | This specification (§29, cross-referenced from §26) | This specification (Document Control, §44, §47, §49, §50, §52) | `README.md`; `docs/strategy/AIOS_ENTERPRISE_ROADMAP_V1.md`; `docs/governance/AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`; `docs/architecture/AIOS_REFERENCE_ARCHITECTURE_V1.md` (independently discovered stale statement, corrected under final-closure authority) |

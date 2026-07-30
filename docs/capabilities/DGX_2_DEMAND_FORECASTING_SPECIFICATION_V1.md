@@ -7,7 +7,7 @@
 ## 1. Document Control
 
 | Field | Value |
-|---|---|
+| --- | --- |
 | Document name | DGX 2.0 — Demand Forecasting Capability Specification |
 | Version | 1.0 |
 | Status | APPROVED CAPABILITY BASELINE |
@@ -44,7 +44,7 @@ Every number this capability produces is a statistically-derived estimate with a
 ## 3. Business Objectives
 
 | Objective | Why it matters | Business KPI | Measurement method |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Reduce stockouts | A stockout on a fast-moving part directly causes a lost sale or a delayed repair. | Stockout rate (% of demand periods with zero available stock on a normally-stocked item) | Computed from real `InventoryBalance`/`InventoryMovement` history vs. real demand. |
 | Improve service level | The rate at which real demand is met from stock without delay is the most direct measure of whether the business can serve its customers. | Fill rate (% of confirmed demand met immediately from available stock) | Computed from `SalesDocumentLine` fulfillment vs. requested quantity and date. |
 | Reduce emergency purchasing | Rush orders carry premium freight cost and weaker supplier terms. | Emergency purchase rate (% of `PurchaseDocument` rows flagged as expedited/rush) | Counted directly from real purchase document data, once such a flag exists (§7 honest gap). |
@@ -85,7 +85,7 @@ A feature request that touches any out-of-scope item above does not belong in th
 ## 5. Business Users
 
 | Role | May see |
-|---|---|
+| --- | --- |
 | Procurement / Purchasing | Full forecast detail, reorder recommendations, supplier lead-time and reliability metrics, cost-relevant data for items within their authorized branch/warehouse scope. |
 | Warehouse | Forecasts and transfer recommendations for their own warehouse; stock-level and reorder-point detail for items they manage. |
 | Branch managers | Forecast and recommendation summaries for their own branch; no cross-branch cost or supplier-negotiation detail unless separately authorized. |
@@ -122,7 +122,7 @@ Demand Forecasting **consumes** Operational Core data and, where relevant, gover
 ## 7. Authoritative Data Sources
 
 | Source | Real model(s) | Classification |
-|---|---|---|
+| --- | --- | --- |
 | Sales history | `SalesDocument`, `SalesDocumentLine` | Authoritative — Operational Core system of record. |
 | Purchases | `PurchaseDocument`, `PurchaseDocumentLine` | Authoritative — Operational Core system of record. |
 | Inventory position | `InventoryBalance`, `InventoryMovement`, `StockSnapshot` | Authoritative — Operational Core system of record. |
@@ -148,7 +148,7 @@ Every "Derived" row above is computed from one or more "Authoritative" rows and 
 ## 8. Forecasting Dimensions
 
 | Dimension | Granularity | Why |
-|---|---|---|
+| --- | --- | --- |
 | Item | Part / Lubricant product | The unit procurement and stocking decisions are actually made at. |
 | Location | Warehouse, then rolled up to Branch | Stock is physically held at a warehouse; branch-level views are an aggregation for management and transfer-balancing purposes. |
 | Supplier | Per supplier relationship for a given item | Lead time and reliability are supplier-specific, not item-specific alone. |
@@ -160,7 +160,7 @@ Every "Derived" row above is computed from one or more "Authoritative" rows and 
 ## 9. Forecast Drivers
 
 | Driver | Data source | Confidence | Update frequency | Business importance |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Historical demand | `SalesDocumentLine` + `GarageJob` consumption | High (real transaction data) | Continuous | Primary input to every current method. |
 | Lead time | `PurchaseDocument`/`PurchaseDocumentLine` timing (order date vs. real receipt date) | Medium — real but variable | Per purchase cycle | Directly determines safety stock and reorder timing (see `PurchaseRecommendationInputs.supplierLeadTimeDays`). |
 | Supplier reliability | Computed by `supplier-analytics/` from real receipt-timing variance | Medium | Per purchase cycle | Feeds confidence in lead-time-based recommendations. |
@@ -182,7 +182,7 @@ Every "Derived" row above is computed from one or more "Authoritative" rows and 
 **This section is conceptual. No new algorithm is implemented by this document.**
 
 | Model family | When suitable | Advantages | Weaknesses | Data requirements | Interpretability | Operational cost |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | Naive / Seasonal Naive | Very short history, or as a real backtest baseline | Trivial to compute, fully explainable | Ignores trend/pattern | Minimal | Perfect | Negligible |
 | Moving Average | Stable, low-variance demand | Simple, robust to noise | Lags behind real trend changes | Low | Very high | Negligible |
 | Exponential Smoothing | Demand with trend and/or seasonality | Captures trend/seasonality with few parameters | Sensitive to parameter choice | Low-Medium | High | Low |
@@ -232,7 +232,7 @@ flowchart TD
 Forecasts must expose uncertainty. AIOS never hides it.
 
 | Confidence level | Meaning | Real, existing basis |
-|---|---|---|
+| --- | --- | --- |
 | **High** | Real, sufficient history; low real backtest error; stable real demand pattern. | `RecommendationConfidence.HIGH` (already defined in `prisma/schema.prisma`). |
 | **Medium** | Real history exists but is shorter, noisier, or the item shows intermittent/variable demand. | `RecommendationConfidence.MEDIUM`. |
 | **Low** | Real history is thin, highly variable, or recent real business conditions have changed materially. | `RecommendationConfidence.LOW`. |
@@ -300,7 +300,7 @@ flowchart LR
 ## 16. Evaluation Framework
 
 | Metric | What it measures | Why it matters |
-|---|---|---|
+| --- | --- | --- |
 | MAPE (Mean Absolute Percentage Error) | Average forecast error as a percentage | Familiar, intuitive, but misleading alone on intermittent/zero-demand series — already why `ForecastRun` also stores WAPE/MASE. |
 | WAPE (Weighted Absolute Percentage Error) | Error weighted by real demand volume | Corrects MAPE's distortion on low-volume/intermittent items. |
 | Bias | Systematic over- or under-forecasting direction | A model that is "accurate on average" but consistently over-forecasts still causes real excess stock. |
@@ -337,7 +337,7 @@ No Demand Forecasting release may ship having failed any gate above, without an 
 Extending the Foundation's failure table (`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md` §13) to forecasting-specific conditions:
 
 | Condition | Expected behavior |
-|---|---|
+| --- | --- |
 | No sales history for an item | Report `INSUFFICIENT_DATA` confidence explicitly; fall back to a family-level estimate only if the family grouping itself is real and evidenced, never invented. |
 | Supplier data missing | Recommend without a lead-time-based safety-stock adjustment, and say so explicitly in the reasoning — never assume a default lead time silently. |
 | Incomplete inventory data | Abstain or flag `REVIEW_DATA` rather than forecast against known-incomplete real stock data. |
@@ -460,7 +460,7 @@ Permanent rules for Demand Forecasting, non-negotiable without a formal ADR:
 ### Future certification categories (not yet evaluated)
 
 | Category | What it measures |
-|---|---|
+| --- | --- |
 | Forecast Quality | Real, backtested accuracy (WAPE/MASE/bias) across a representative real item population, against agreed thresholds. |
 | Business Value | Real, measured movement in the KPIs from §3 (stockout rate, turnover, emergency purchases) attributable to this capability. |
 | Operational Safety | Zero real cases of a business rule (§14) being bypassed; zero real unapproved ERP actions. |

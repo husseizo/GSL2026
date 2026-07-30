@@ -5,7 +5,7 @@
 ---
 
 > This is an execution plan, not an architecture document. It does not modify, and remains strictly subordinate to, every frozen Phase I document (`AIOS_FOUNDATION_ARCHITECTURE_SPECIFICATION_V1.md`, `AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md`, `AIOS_ENTERPRISE_ROADMAP_V1.md`, `AIOS_REFERENCE_ARCHITECTURE_V1.md`, `DGX_2_DEMAND_FORECASTING_SPECIFICATION_V1.md`, `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md`) and the real, evidence-based implementation assessment that preceded this document. Every task, gap, and priority named below is drawn directly from that assessment — nothing here is a new finding.
-
+>
 > **Historical record**: this document is the pre-Sprint-1 execution plan and reflects DGX 2.0's status *before* Sprints 1-4 and Remediation Cycles 1-2 were carried out. All four sprints and both remediation cycles referenced below as planned/future work have since been executed exactly as sequenced here, ending in two real certification runs (verdict `NOT_READY` both times) and a closed Phase A. For the current, authoritative status, see [`docs/execution/DGX2_PHASE_A_BASELINE_1_0.md`](DGX2_PHASE_A_BASELINE_1_0.md).
 
 ---
@@ -19,7 +19,7 @@ DGX 2.0's real, current maturity: a substantially built Phase A deterministic ba
 ## 2. Current Capability Status
 
 | Area | Status |
-|---|---|
+| --- | --- |
 | Forecasting engine (classical methods, backtesting) | **Implemented** |
 | Recommendation engines (purchase, transfer) | **Implemented**, with 2 Critical and 3 High-severity gaps |
 | Human approval workflow | **Implemented** |
@@ -57,7 +57,7 @@ flowchart LR
 ```
 
 | Phase | Exit criteria |
-|---|---|
+| --- | --- |
 | A — Safety Gate Closure | Every Safety Gate in `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md` §8 passes under a real, executed test — not by code review alone. |
 | B — Certification Infrastructure | WAPE/MASE persisted on every real `ForecastRun`; forecast/recommendation metrics exported from the observability layer; a real, versioned Certification Dataset exists; `scripts/run-dgx2-certification-check.ts` exists and executes end-to-end against real data. |
 | C — Internal Validation | Business rules, forecast correctness, confidence calculation, recommendation generation, failure handling, security, performance, and regression are all verified by real, executed tests (unit *and* integration) — per the capability spec's own Internal Testing stage. |
@@ -105,7 +105,7 @@ flowchart TB
 ```
 
 | Workstream | Backlog items | Real current state |
-|---|---|---|
+| --- | --- | --- |
 | Business Rules | Supplier-availability check, warehouse-capacity check, procurement approval-limit check | 4 of 6 spec rules already enforced; these 3 items close the remainder |
 | Forecasting | WAPE/MASE persistence, real seasonal-cycle evaluation, explicit incomplete-data/seasonality-unavailable handling | Core forecasting math and backtesting are real; these items close Evaluation/Failure-Philosophy gaps |
 | Recommendation Engine | Narrative "why not another action" explanation, resolving the dead `TRANSFER` enum value | Action logic is real and sound; these are explainability/cleanliness items |
@@ -174,7 +174,7 @@ gantt
 ```
 
 | | Objectives | Deliverables | Dependencies | Success criteria |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Sprint 1** | Close both Critical safety gates | Supplier-active check implemented and tested; ADR filed and approved for warehouse capacity; warehouse-capacity field added and enforced | None | Both gates pass under a real, executed test |
 | **Sprint 2** | Build certification infrastructure, start testing | WAPE/MASE persisted; forecast/recommendation metrics exported; integration tests for `ForecastingService` and `PurchaseRecommendationsService` | Sprint 1 | Metrics visible in real dashboard queries; two of five services have real integration coverage |
 | **Sprint 3** | Complete testing and dataset construction | Integration tests for the remaining three orchestrating services; Certification Dataset v1 built and versioned; approval-limit and branch-scoping fixes landed | Sprint 2 | All five services have real integration coverage; dataset exists with documented coverage |
@@ -217,7 +217,7 @@ This is the critical path because every other backlog item (branch scoping, appr
 Only two items in this program touch anything requiring an ADR, per `AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md` §13:
 
 | Change | Trigger | ADR required |
-|---|---|---|
+| --- | --- | --- |
 | Warehouse Capacity field | Schema change touching Operational Core data | Yes — filed before Sprint 1's schema work begins |
 | Scheduler (recurring trigger for forecast/recommendation generation) | A platform-level infrastructure decision, not scoped to this capability alone | Yes — filed separately, owned at the Architecture/Governance level, not by this program alone |
 
@@ -228,7 +228,7 @@ No other item in this program's backlog touches a Foundation contract, an archit
 ## 10. Schema Changes
 
 | Change | Description | Risk | Rollback |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `Warehouse.capacity` (or equivalent field name, decided at ADR time) | An additive, nullable numeric field | Low — additive-only, no existing row requires a value, no existing query is affected until the new business-rule check is also deployed | Trivial — drop the column; the business-rule check that reads it is deployed and rolled back together, never independently |
 
 No other schema change is required by this program. Every other backlog item is implementable against the existing schema.
@@ -238,7 +238,7 @@ No other schema change is required by this program. Every other backlog item is 
 ## 11. Testing Strategy
 
 | Level | Current state | Required for this program |
-|---|---|---|
+| --- | --- | --- |
 | Unit | Real, exists for every pure math function (`forecast-math.ts`, `purchase-recommendation-math.ts`, `transfer-recommendation-math.ts`, `metrics-math.ts`, `supplier-metric-math.ts`) | Extend for every new business-rule check (items in Phase A) |
 | Integration | **Does not exist** for any orchestrating service | Build for all five: `ForecastingService`, `PurchaseRecommendationsService`, `TransferRecommendationsService`, `LostSalesEngineService`, `SupplierAnalyticsService` — real Postgres, real data, matching the existing integration-test convention used elsewhere in AIOS |
 | Regression | Real, full suite exists at the platform level | Every fix in this program runs the full existing suite before being considered done, per the Foundation's own regression discipline |
@@ -250,7 +250,7 @@ No other schema change is required by this program. Every other backlog item is 
 ## 12. Observability Rollout
 
 | Element | Plan |
-|---|---|
+| --- | --- |
 | Metrics | Add forecast/recommendation-specific Prometheus-format metrics to the existing `observability/metrics.service.ts`, following its established Counter/Gauge/Histogram convention |
 | Logs | Add `AuditService.log()` calls to `ForecastingService.generate()`, matching the pattern already real in the recommendation services |
 | Dashboards | Extend the existing self-hosted static-HTML dashboard pattern (`ai-benchmark/reports/`) with a capability-specific view, once real certification data exists to display |
@@ -262,7 +262,7 @@ No other schema change is required by this program. Every other backlog item is 
 ## 13. Certification Dataset Plan
 
 | Aspect | Plan |
-|---|---|
+| --- | --- |
 | Dataset sources | Real historical `SalesDocumentLine`, `PurchaseDocumentLine`, `InventoryMovement`, `GarageJob`, and `StockTransfer` data already present in the operational database — no synthetic data |
 | Versioning | Append-only, mirroring the AI Foundation's own Gold Dataset versioning discipline — v1 frozen once built, corrections create v2, never an in-place edit |
 | Ownership | The Engineering Owner and Business Owner named for DGX 2.0 under `AIOS_CAPABILITY_GOVERNANCE_STANDARD_V1.md` §12 (not yet formally assigned — see Risk Register, §15) |
@@ -288,7 +288,7 @@ flowchart LR
 ```
 
 | Element | Plan |
-|---|---|
+| --- | --- |
 | Inputs | The real Certification Dataset (§13), the current, fixed codebase state after Phases A-C |
 | Outputs | A real scorecard (per `DGX2_DEMAND_FORECASTING_CERTIFICATION_STANDARD_V1.md` §26, Appendix A), covering all nine evaluation categories (§5 of that standard) |
 | Evidence | Real, executed test logs, real gate pass/fail results, real KPI measurements — no simulated or assumed results |
@@ -300,7 +300,7 @@ flowchart LR
 ## 15. Risk Register
 
 | Risk | Probability | Impact | Mitigation | Owner |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Warehouse-capacity schema change delayed by ADR review | Medium | High (blocks Phase A, and therefore everything after it) | File the ADR immediately, in parallel with Sprint 1 planning, not after | Engineering Owner |
 | Integration-test effort underestimated (five services, real Postgres) | Medium | High (blocks Phase C) | Scope Sprint 2/3 conservatively; treat this as the program's largest real unknown | Engineering Owner |
 | Branch/warehouse scoping fix changes real, relied-upon behavior | Medium | Medium | Ship behind a real, tested rollout; verify against real current usage before removing old behavior | Engineering + Operational Sponsor |
@@ -313,7 +313,7 @@ flowchart LR
 ## 16. Resource Plan
 
 | Function | Role in this program |
-|---|---|
+| --- | --- |
 | Engineering | Implements every backlog item; owns unit/integration test coverage; builds the certification-run script |
 | Architecture | Reviews and approves the two required ADRs (§9); confirms no Foundation contract is touched at any point |
 | Operations | Confirms real monitoring/alerting readiness before Phase E/F; owns the eventual scheduler decision |
@@ -325,12 +325,14 @@ flowchart LR
 ## 17. Parallelization Plan
 
 **Can run together:**
+
 - Supplier-active check and the warehouse-capacity ADR filing (Sprint 1) — independent code paths.
 - Observability metrics work and Certification Dataset construction (Sprint 2-3) — independent workstreams.
 - Integration tests across different services (Sprint 2-3) — each service's test suite is independent of the others.
 - Approval-limit check and branch/warehouse scoping (Sprint 3) — independent of the certification-critical-path items.
 
 **Cannot run together (hard sequential dependency):**
+
 - The warehouse-capacity business-rule check cannot be implemented before its schema field exists (ADR approval → migration → code).
 - The certification-run script cannot be finished before both the Certification Dataset and WAPE/MASE persistence exist — it depends on both as real inputs.
 - Phase D (Certification Run) cannot begin before Phase C (Internal Validation) is fully exited — no partial-credit certification attempts.
@@ -341,7 +343,7 @@ flowchart LR
 ## 18. Definition of Done
 
 | Workstream | Done means |
-|---|---|
+| --- | --- |
 | Business Rules | Every rule in capability spec §14 is enforced by real code, verified by a real, executed test that demonstrates the violating case is actually rejected |
 | Forecasting | WAPE/MASE persisted on every real `ForecastRun`; seasonal-cycle evaluation backtested against real, measured accuracy |
 | Recommendation Engine | Every action includes a real, human-readable "why not another action" explanation; no dead enum values remain unaddressed |
@@ -356,7 +358,7 @@ flowchart LR
 ## 19. Release Gates
 
 | Gate | Criteria |
-|---|---|
+| --- | --- |
 | Internal Validation | Business rules, forecast correctness, confidence calculation, recommendation generation, failure handling, security, performance, and regression all verified by real, executed tests (capability spec's own Internal Testing stage). |
 | Certification | A real certification run executes to completion against the real Certification Dataset and produces a verdict of `LIMITED_PILOT` or above (`NOT_READY` sends the program back to Phase A/B/C, not forward). |
 | Pilot | Real, measured pilot evidence (planner adoption, forecast accuracy, recommendation acceptance, business value, operational issues, human trust) meets or exceeds the certified level's requirements. |
@@ -386,7 +388,7 @@ flowchart LR
 ## 22. Success Metrics
 
 | Category | Metric |
-|---|---|
+| --- | --- |
 | Technical | All five orchestrating services have real integration coverage; zero open Critical/High findings from the traceability matrix. |
 | Business | Real, measured movement in the KPIs named in capability spec §3/§16, once Pilot/Production data exists. |
 | Operational | Real, running observability and alerting; a real, exercised runbook. |
