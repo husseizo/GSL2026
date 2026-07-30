@@ -30,6 +30,22 @@ const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
 
+// Same escaping rules as scripts/ci/validate-mermaid-blocks.py's
+// escape_annotation_message() — % first, then CR, then LF — see
+// docs/investigations/DOCUMENTATION_CI_OBSERVABILITY_REMEDIATION_1.md.
+// Without this, a raw newline in a ::error:: command truncates the
+// message before GitHub ever stores it, exactly as that document
+// documents happened to the Python validator's own original error text.
+function escapeAnnotationMessage(text) {
+  return String(text).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+}
+
+function emitErrorAnnotation(message) {
+  console.log(`::error::${escapeAnnotationMessage(message)}`);
+}
+
+const capturedFailures = [];
+
 function resolvePuppeteerDir() {
   const npmRoot = execSync('npm root -g').toString().trim();
   return path.join(npmRoot, '@mermaid-js', 'mermaid-cli', 'node_modules', 'puppeteer');
@@ -57,8 +73,17 @@ async function attemptLaunch(puppeteer, executablePath, extraArgs, label) {
     console.log(`Launch succeeded (${label}). Blank page title: "${title}"`);
     return true;
   } catch (err) {
+    const detail = err && err.stack ? err.stack : String(err);
     console.log(`Launch FAILED (${label}):`);
-    console.log(err && err.stack ? err.stack : String(err));
+    console.log(detail);
+    // Recorded (not yet emitted) so that, if every attempt fails, the
+    // *complete* set of failure details — not just the last one — is
+    // available for the final ::error:: annotation below. Plain
+    // console.log output alone is not queryable via the public GitHub
+    // annotations API without repository admin rights (confirmed
+    // directly during this remediation's own verification), which is
+    // exactly the gap this recording closes.
+    capturedFailures.push({ label, detail });
     return false;
   } finally {
     if (browser) {
@@ -115,11 +140,19 @@ async function main() {
   }
 
   console.log('SMOKE TEST RESULT: FAIL (browser could not launch with or without the sandbox)');
+  const combined = capturedFailures
+    .map((f) => `[${f.label}]\n${f.detail}`)
+    .join('\n\n');
+  emitErrorAnnotation(
+    `Chromium smoke test failed — both launch attempts failed. Full detail below:\n\n${combined}`,
+  );
   process.exit(1);
 }
 
 main().catch((err) => {
+  const detail = err && err.stack ? err.stack : String(err);
   console.log('SMOKE TEST RESULT: FAIL (unexpected error)');
-  console.log(err && err.stack ? err.stack : String(err));
+  console.log(detail);
+  emitErrorAnnotation(`Chromium smoke test crashed unexpectedly: ${detail}`);
   process.exit(1);
 });
