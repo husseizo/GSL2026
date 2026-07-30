@@ -102,7 +102,15 @@ async function main() {
 
   // eslint-disable-next-line import/no-dynamic-require, global-require
   const puppeteer = require(puppeteerDir);
-  const executablePath = puppeteer.executablePath();
+  // Confirmed directly against the pinned puppeteer@25.4.0: executablePath()
+  // returns a Promise here (unlike older Puppeteer versions where it was
+  // synchronous) — omitting `await` previously produced the literal string
+  // "[object Promise]" as the executablePath, which Puppeteer then reported
+  // as "Browser was not found at the configured executablePath". mmdc's own
+  // code never calls executablePath() itself (it just awaits
+  // puppeteer.launch() directly), so this bug was isolated to this
+  // diagnostic script.
+  const executablePath = await puppeteer.executablePath();
   console.log(`Resolved Chromium executable path: ${executablePath}`);
   console.log(`Chromium binary exists: ${fs.existsSync(executablePath)}`);
 

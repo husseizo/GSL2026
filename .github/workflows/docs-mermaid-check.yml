@@ -79,7 +79,12 @@ jobs:
           echo "--- Puppeteer version (resolved) ---"
           node -e "console.log(require(process.argv[1]).version)" "$PUPPETEER_DIR/package.json"
           echo ""
-          CHROME_PATH="$(node -e "console.log(require(process.argv[1]).executablePath())" "$PUPPETEER_DIR")"
+          # executablePath() is asynchronous on the pinned puppeteer@25.4.0
+          # (confirmed directly — older Puppeteer versions returned a plain
+          # string here). Without awaiting it, CHROME_PATH previously
+          # resolved to the literal text "Promise { <pending> }", silently
+          # invalidating every check below it.
+          CHROME_PATH="$(node -e "(async()=>{console.log(await require(process.argv[1]).executablePath())})()" "$PUPPETEER_DIR")"
           echo "Resolved Chromium executable path: $CHROME_PATH"
           echo "--- existence / permissions ---"
           ls -la "$CHROME_PATH" || echo "Chromium binary does not exist at that path"
@@ -113,7 +118,7 @@ jobs:
         run: |
           MMDC_DIR="$(npm root -g)/@mermaid-js/mermaid-cli"
           PUPPETEER_DIR="$MMDC_DIR/node_modules/puppeteer"
-          CHROME_PATH="$(node -e "console.log(require(process.argv[1]).executablePath())" "$PUPPETEER_DIR")"
+          CHROME_PATH="$(node -e "(async()=>{console.log(await require(process.argv[1]).executablePath())})()" "$PUPPETEER_DIR")"
           echo "--- ldd after dependency installation ---"
           ldd "$CHROME_PATH" || true
           MISSING="$(ldd "$CHROME_PATH" 2>/dev/null | grep "not found" || true)"
