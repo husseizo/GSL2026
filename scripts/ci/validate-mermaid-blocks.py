@@ -23,6 +23,19 @@ annotation escaping or length limits. Successful runs are unaffected:
 per-block detail is emitted via `::debug::` (hidden in the UI unless
 step-debug logging is enabled) so the default log stays exactly as
 concise as before ("Checked N mermaid block(s).").
+
+Runtime (docs/investigations/DOCUMENTATION_CI_RUNTIME_REMEDIATION_1.md):
+`scripts/ci/chromium-smoke-test.cjs` runs before this script in the
+workflow, proves the CI runtime can actually launch the exact Chromium
+binary mmdc uses, and — only if a plain sandboxed launch fails — records
+the minimal Puppeteer launch args that were empirically required (e.g.
+`--no-sandbox`) in a small JSON file outside the repository. If that
+file exists, every `mmdc` invocation below is given it via
+`--puppeteerConfigFile` (mmdc's own, officially supported mechanism),
+so the real validator uses exactly the same, evidence-proven launch
+arguments the smoke test already confirmed — never a hardcoded
+assumption. If the file does not exist, `mmdc` runs exactly as before,
+with no added arguments.
 """
 import json
 import os
@@ -37,6 +50,26 @@ import tempfile
 MERMAID_BLOCK = re.compile(r"```mermaid\n(.*?)```", re.DOTALL)
 SKIP_DIRS = {"node_modules", ".git", "dist", "build", "__pycache__"}
 MMDC_TIMEOUT_SECONDS = 60
+
+
+def puppeteer_runtime_config_path() -> str:
+    # Matches scripts/ci/chromium-smoke-test.cjs's own runtimeConfigPath()
+    # exactly — both must agree on where this file lives.
+    directory = os.environ.get("RUNNER_TEMP") or tempfile.gettempdir()
+    return os.path.join(directory, "mermaid-puppeteer-config.json")
+
+
+def resolve_mmdc_extra_args() -> list:
+    """If the Chromium smoke test ran and proved a plain sandboxed launch
+    was insufficient, its runtime config file exists and this returns the
+    `--puppeteerConfigFile` argument pointing at it — mmdc's own,
+    officially documented mechanism for passing Puppeteer launch options.
+    Returns an empty list (no behavior change) if the smoke test was
+    never run or found no override necessary."""
+    config_path = puppeteer_runtime_config_path()
+    if os.path.exists(config_path):
+        return ["--puppeteerConfigFile", config_path]
+    return []
 
 
 def find_markdown_files(root: str):
@@ -195,7 +228,7 @@ def validate_block(path: str, index: int, block: str) -> bool:
         tmp_in = f.name
     tmp_out = tmp_in + ".svg"
     tmp_size = os.path.getsize(tmp_in)
-    cmd = ["mmdc", "-i", tmp_in, "-o", tmp_out]
+    cmd = ["mmdc", "-i", tmp_in, "-o", tmp_out] + resolve_mmdc_extra_args()
 
     emit_debug(
         f"file={path} block={index} tmp_in={tmp_in} tmp_out={tmp_out} "

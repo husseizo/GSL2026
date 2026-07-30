@@ -4,14 +4,35 @@ name: Documentation Mermaid Validation
 # workflows. Parses every fenced ```mermaid block in the repository to
 # confirm it is syntactically valid, without rendering or publishing
 # anything.
+#
+# Runtime remediation (docs/investigations/DOCUMENTATION_CI_RUNTIME_REMEDIATION_1.md):
+# the real validator step below requires a working headless Chromium.
+# Confirmed by direct evidence (see that document) that a fresh
+# ubuntu-latest runner does not launch Chromium successfully out of the
+# box. Steps 4-7 below establish that runtime deterministically before
+# the actual mermaid content is ever validated:
+#   1. install mermaid-cli (pinned) and pin its Puppeteer peer dependency
+#   2. print "before" diagnostics (Stage 1 evidence)
+#   3. install Chromium's documented Ubuntu/Debian runtime dependencies
+#   4. print "after" diagnostics, confirming resolution
+#   5. run a minimal browser-launch smoke test (must pass, or the job
+#      stops here rather than failing later with the same opaque error
+#      this remediation exists to fix)
+#   6. run the existing, unmodified validation logic
 on:
   pull_request:
     paths:
       - "**/*.md"
+      - ".github/workflows/docs-mermaid-check.yml"
+      - "scripts/ci/validate-mermaid-blocks.py"
+      - "scripts/ci/chromium-smoke-test.cjs"
   push:
     branches: [main]
     paths:
       - "**/*.md"
+      - ".github/workflows/docs-mermaid-check.yml"
+      - "scripts/ci/validate-mermaid-blocks.py"
+      - "scripts/ci/chromium-smoke-test.cjs"
   workflow_dispatch: {}
 
 jobs:
@@ -25,13 +46,94 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install mermaid-cli
-        # Pinned (not "@latest"): an unpinned install makes this workflow's
-        # result depend on whatever version npm resolves as latest on the
-        # day it happens to run, which can silently change behavior between
-        # runs. 11.16.0 is confirmed, by direct local validation, to parse
-        # every current mermaid block in this repository correctly.
-        run: npm install -g @mermaid-js/mermaid-cli@11.16.0
+      - name: Install mermaid-cli (pinned) and pin its Puppeteer peer dependency
+        # mermaid-cli's own version being pinned does not pin *its*
+        # dependency on puppeteer — puppeteer is declared only as a peer
+        # dependency (a semver range), so a fresh install resolves it (and
+        # the Chromium build it bundles) to whatever is npm's absolute
+        # latest at that moment. Confirmed directly: this resolved to
+        # puppeteer 25.4.0 on the date this remediation was written. That
+        # version is pinned explicitly here, inside mermaid-cli's own
+        # nested node_modules (where mmdc actually resolves it from), so
+        # this workflow's runtime does not silently drift between runs.
+        run: |
+          npm install -g @mermaid-js/mermaid-cli@11.16.0
+          MMDC_DIR="$(npm root -g)/@mermaid-js/mermaid-cli"
+          echo "mermaid-cli installed at: $MMDC_DIR"
+          (cd "$MMDC_DIR" && npm install puppeteer@25.4.0 --no-save --no-audit --no-fund)
+          echo "Pinned puppeteer version now in place:"
+          node -e "console.log(require(process.argv[1]).version)" "$MMDC_DIR/node_modules/puppeteer/package.json"
+
+      - name: "Stage 1 — Runtime diagnostics (before dependency remediation)"
+        run: |
+          echo "--- Node / npm / mmdc versions ---"
+          node --version
+          npm --version
+          mmdc --version
+          echo ""
+          echo "--- OS release ---"
+          cat /etc/os-release || true
+          echo ""
+          MMDC_DIR="$(npm root -g)/@mermaid-js/mermaid-cli"
+          PUPPETEER_DIR="$MMDC_DIR/node_modules/puppeteer"
+          echo "--- Puppeteer version (resolved) ---"
+          node -e "console.log(require(process.argv[1]).version)" "$PUPPETEER_DIR/package.json"
+          echo ""
+          CHROME_PATH="$(node -e "console.log(require(process.argv[1]).executablePath())" "$PUPPETEER_DIR")"
+          echo "Resolved Chromium executable path: $CHROME_PATH"
+          echo "--- existence / permissions ---"
+          ls -la "$CHROME_PATH" || echo "Chromium binary does not exist at that path"
+          echo "--- file ---"
+          file "$CHROME_PATH" || true
+          echo "--- stat ---"
+          stat "$CHROME_PATH" || true
+          echo "--- ldd (missing shared libraries appear as \"=> not found\") ---"
+          ldd "$CHROME_PATH" || true
+          echo "--- direct --version invocation ---"
+          "$CHROME_PATH" --version || echo "Direct invocation failed (see ldd output above for the likely reason)"
+
+      - name: "Stage 2 — Install Chromium's documented Ubuntu/Debian runtime dependencies"
+        # This is the standard, officially-documented package list Google/
+        # Puppeteer's own troubleshooting guidance lists for headless
+        # Chrome on Debian-based systems (see the remediation doc for the
+        # exact source and reasoning). Installed one package at a time,
+        # tolerating any single package name that does not exist under
+        # that exact name on this runner's current Ubuntu release (package
+        # names have changed across Ubuntu versions, e.g. libasound2 vs.
+        # libasound2t64) — a missing/renamed package is logged and
+        # skipped rather than aborting the whole step.
+        run: |
+          sudo apt-get update
+          PACKAGES="ca-certificates fonts-liberation libasound2 libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc-s1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils"
+          for pkg in $PACKAGES; do
+            sudo apt-get install -y --no-install-recommends "$pkg" || echo "SKIP: '$pkg' not available under this exact name on this runner image (commonly means it is already satisfied, provided by another package, or renamed for this Ubuntu release)"
+          done
+
+      - name: "Stage 1 (repeat) — Confirm no shared libraries remain missing"
+        run: |
+          MMDC_DIR="$(npm root -g)/@mermaid-js/mermaid-cli"
+          PUPPETEER_DIR="$MMDC_DIR/node_modules/puppeteer"
+          CHROME_PATH="$(node -e "console.log(require(process.argv[1]).executablePath())" "$PUPPETEER_DIR")"
+          echo "--- ldd after dependency installation ---"
+          ldd "$CHROME_PATH" || true
+          MISSING="$(ldd "$CHROME_PATH" 2>/dev/null | grep "not found" || true)"
+          if [ -n "$MISSING" ]; then
+            echo "::warning::The following shared libraries are still reported missing after dependency installation:"
+            echo "$MISSING"
+          else
+            echo "No missing shared libraries reported by ldd."
+          fi
+
+      - name: Browser launch smoke test (must pass before the real validator runs)
+        # Resolves and launches the exact same Chromium binary mmdc uses,
+        # opens a blank page, and closes cleanly. Tries a plain sandboxed
+        # launch first; only falls back to --no-sandbox if that fails
+        # (see the script and the remediation doc for the documented,
+        # evidence-gated justification). If neither attempt succeeds,
+        # this step fails here — deliberately not silently continuing to
+        # the real validator, which would otherwise just repeat the same
+        # opaque failure this remediation exists to fix.
+        run: node scripts/ci/chromium-smoke-test.cjs
 
       - name: Extract and validate every mermaid block
         run: python3 scripts/ci/validate-mermaid-blocks.py
