@@ -18,6 +18,20 @@
 
 ---
 
+## Program Status (Addendum — recorded 2026-07-31, governance closure only; original plan content below is unchanged)
+
+| Phase | Status | Verification evidence |
+|---|---|---|
+| PEP-1 (Identity Layer) | **COMPLETE — VERIFIED — CLOSED** | `docs/engineering/verification/DGX3_PEP1_VERIFICATION_AND_PHASE_CLOSURE.md`; commit `6e0114c` |
+| PEP-2 (Authorization Layer) | **COMPLETE — VERIFIED — CLOSED** | `docs/engineering/verification/DGX3_PEP2_VERIFICATION_AND_PHASE_CLOSURE.md`; commit `814a4d0` |
+| PEP-3 (Permission Migration) | **COMPLETE — VERIFIED — CLOSED — SUCCESSFUL. Authorization Migration Complete.** | `docs/engineering/verification/WP3_0_PERMISSION_FOUNDATION_IMPLEMENTATION.md`, `WP3_1_INTEGRATION_CONTROLLER_MIGRATION.md`, `WP3_2_PARTS_CONTROLLER_MIGRATION.md`, `WP3_3_VEHICLES_CONTROLLER_MIGRATION.md`, `docs/engineering/verification/PEP3_INDEPENDENT_VERIFICATION.md`; commits `cd448ee`, `d75706f`, `97f1f39`, `d87590a`, `b9533ab`; tag `pep3-complete` |
+| PEP-4 (Regression Testing) | **NOT STARTED** — planning only; see `docs/engineering/planning/PEP4_READINESS_AND_SCOPE_LOCK.md` | — |
+| PEP-5 (Security Verification Preparation) | **NOT STARTED** — blocked on PEP-4 per this plan's own dependency graph (§4 below) | — |
+
+This addendum records governance status only; it does not alter any phase's original scope, task list, or acceptance criteria as defined in the sections below.
+
+---
+
 ## 1. Executive Summary
 
 Five implementation phases translate PRTS-001 through PRTS-005 into sequenced, independently verifiable work packages, honoring the two binding conditions the Implementation Authorization attached: strict phase-by-phase (and, within Phase 3, controller-by-controller) sequencing, and a non-waivable independent security verification regardless of whether a named Security Reviewer exists yet. Every file this plan touches was already named in the Technical Specification; no new file, module, schema, or API is introduced by this plan or authorized by it. The critical path runs through Phase 3 (the highest-risk phase, per the Technical Specification's own risk rating) and terminates at Phase 5's evidence handoff to an independent reviewer — this plan does not perform that review itself.
