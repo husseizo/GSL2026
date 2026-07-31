@@ -9,20 +9,28 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
-import { Roles } from '../common/rbac/roles.decorator';
-import { RolesGuard } from '../common/rbac/roles.guard';
+import { PermissionsGuard } from '../common/permissions/permissions.guard';
+import { RequirePermissions } from '../common/permissions/permissions.decorator';
 import { CorrectVehicleAttributeDto } from './dto/correct-vehicle-attribute.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { VehiclesService } from './vehicles.service';
 
+// Platform Remediation PEP-3 (WP-3.3, see
+// docs/governance/DGX3_PLATFORM_REMEDIATION_TECHNICAL_SPECIFICATION_1.md
+// §4, PRTS-003): migrated from RolesGuard/@Roles (direct x-user-role
+// header read, never consulting a verified actor) to
+// PermissionsGuard/@RequirePermissions. Each permission below is an exact
+// match to that endpoint's pre-migration @Roles(...) list — no role
+// gains or loses access. The three GET endpoints below remain
+// undecorated (open today) — tightening them is an explicit, separate,
+// out-of-scope future decision (Technical Specification §5).
 @Controller('vehicles')
-@UseGuards(RolesGuard)
+@UseGuards(PermissionsGuard)
 export class VehiclesController {
   constructor(private readonly vehicles: VehiclesService) {}
 
   @Post()
-  @Roles(Role.SYSTEM_ADMINISTRATOR, Role.BRANCH_MANAGER, Role.PARTS_MANAGER)
+  @RequirePermissions('vehicle.create')
   create(@Body() dto: CreateVehicleDto) {
     return this.vehicles.create(dto);
   }
@@ -53,7 +61,7 @@ export class VehiclesController {
   // Corrections are their own endpoint (not PATCH-the-whole-record) so every
   // change is forced through the append-only history path.
   @Patch(':id/attribute-correction')
-  @Roles(Role.SYSTEM_ADMINISTRATOR, Role.BRANCH_MANAGER, Role.PARTS_MANAGER)
+  @RequirePermissions('vehicle.correct')
   correctAttribute(@Param('id') id: string, @Body() dto: CorrectVehicleAttributeDto) {
     return this.vehicles.correctAttribute(id, dto);
   }
