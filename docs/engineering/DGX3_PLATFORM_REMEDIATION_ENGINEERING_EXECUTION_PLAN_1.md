@@ -25,8 +25,8 @@
 | PEP-1 (Identity Layer) | **COMPLETE — VERIFIED — CLOSED** | `docs/engineering/verification/DGX3_PEP1_VERIFICATION_AND_PHASE_CLOSURE.md`; commit `6e0114c` |
 | PEP-2 (Authorization Layer) | **COMPLETE — VERIFIED — CLOSED** | `docs/engineering/verification/DGX3_PEP2_VERIFICATION_AND_PHASE_CLOSURE.md`; commit `814a4d0` |
 | PEP-3 (Permission Migration) | **COMPLETE — VERIFIED — CLOSED — SUCCESSFUL. Authorization Migration Complete.** | `docs/engineering/verification/WP3_0_PERMISSION_FOUNDATION_IMPLEMENTATION.md`, `WP3_1_INTEGRATION_CONTROLLER_MIGRATION.md`, `WP3_2_PARTS_CONTROLLER_MIGRATION.md`, `WP3_3_VEHICLES_CONTROLLER_MIGRATION.md`, `docs/engineering/verification/PEP3_INDEPENDENT_VERIFICATION.md`; commits `cd448ee`, `d75706f`, `97f1f39`, `d87590a`, `b9533ab`; tag `pep3-complete` |
-| PEP-4 (Regression Testing) | **NOT STARTED** — planning only; see `docs/engineering/planning/PEP4_READINESS_AND_SCOPE_LOCK.md` | — |
-| PEP-5 (Security Verification Preparation) | **NOT STARTED** — blocked on PEP-4 per this plan's own dependency graph (§4 below) | — |
+| PEP-4 (Regression Testing) | **COMPLETE — VERIFIED — CLOSED — SUCCESSFUL. Regression Consolidation Complete.** | `docs/engineering/planning/PEP4_READINESS_AND_SCOPE_LOCK.md`, `docs/engineering/verification/PEP4_READINESS_INDEPENDENT_REVIEW.md`, `docs/engineering/verification/WP4_0_REGRESSION_CONSOLIDATION_IMPLEMENTATION.md`, `docs/engineering/verification/PEP4_INDEPENDENT_VERIFICATION.md`; commits `69c2ccc`, `7cc8d77`; tag `pep4-complete` |
+| PEP-5 (Security Verification Preparation) | **NOT STARTED** — no longer blocked (PEP-4 is now closed), but not yet authorized; requires a separate, future implementation authorization | — |
 
 This addendum records governance status only; it does not alter any phase's original scope, task list, or acceptance criteria as defined in the sections below.
 
