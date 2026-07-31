@@ -26,7 +26,13 @@
 | PEP-2 (Authorization Layer) | **COMPLETE — VERIFIED — CLOSED** | `docs/engineering/verification/DGX3_PEP2_VERIFICATION_AND_PHASE_CLOSURE.md`; commit `814a4d0` |
 | PEP-3 (Permission Migration) | **COMPLETE — VERIFIED — CLOSED — SUCCESSFUL. Authorization Migration Complete.** | `docs/engineering/verification/WP3_0_PERMISSION_FOUNDATION_IMPLEMENTATION.md`, `WP3_1_INTEGRATION_CONTROLLER_MIGRATION.md`, `WP3_2_PARTS_CONTROLLER_MIGRATION.md`, `WP3_3_VEHICLES_CONTROLLER_MIGRATION.md`, `docs/engineering/verification/PEP3_INDEPENDENT_VERIFICATION.md`; commits `cd448ee`, `d75706f`, `97f1f39`, `d87590a`, `b9533ab`; tag `pep3-complete` |
 | PEP-4 (Regression Testing) | **COMPLETE — VERIFIED — CLOSED — SUCCESSFUL. Regression Consolidation Complete.** | `docs/engineering/planning/PEP4_READINESS_AND_SCOPE_LOCK.md`, `docs/engineering/verification/PEP4_READINESS_INDEPENDENT_REVIEW.md`, `docs/engineering/verification/WP4_0_REGRESSION_CONSOLIDATION_IMPLEMENTATION.md`, `docs/engineering/verification/PEP4_INDEPENDENT_VERIFICATION.md`; commits `69c2ccc`, `7cc8d77`; tag `pep4-complete` |
-| PEP-5 (Security Verification Preparation) | **NOT STARTED** — no longer blocked (PEP-4 is now closed), but not yet authorized; requires a separate, future implementation authorization | — |
+| PEP-5 (Security Verification Preparation) | **SUPERSEDED BY PROGRAMME ARCHIVAL** — the Platform Remediation Programme closes at PEP-4; this phase, as originally defined here, is not carried forward under PEP numbering. Any future Security Verification Preparation / PRTS-005 work must be proposed as a new, independently-authorized engineering initiative under `docs/engineering/governance/AIOS_ENGINEERING_PLAYBOOK_V1.md`'s lifecycle, not resumed as "PEP-5." | `docs/engineering/governance/AIOS_PROGRAMME_ARCHIVE.md` |
+
+### Programme Archival
+
+**AIOS Platform Remediation Programme — Status: ARCHIVED. OFFICIAL ENGINEERING BASELINE.**
+
+The Platform Remediation Programme (PEP-1 through PEP-4) is formally archived — see `docs/engineering/governance/AIOS_PROGRAMME_ARCHIVE.md` and `docs/engineering/governance/AIOS_ENGINEERING_PLAYBOOK_V1.md`. Future engineering initiatives in this repository shall reference the Playbook as the governing engineering standard and shall **not** continue PEP numbering. Each future initiative instead follows: **New Initiative Proposal → Playbook Review → Readiness & Scope Lock → Implementation → Independent Verification → Governance Closure → Programme Retrospective → Archive.**
 
 This addendum records governance status only; it does not alter any phase's original scope, task list, or acceptance criteria as defined in the sections below.
 
