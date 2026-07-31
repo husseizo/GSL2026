@@ -114,4 +114,37 @@ describe('JwtAuthContextGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(context.requestRef.verifiedActor).toBeUndefined();
   });
+
+  // PEP-4 (WP-4.0): closes the one coverage gap the PEP-1 Verification and
+  // Phase Closure report explicitly flagged as non-blocking but worth
+  // hardening — the valid-API-key success path was never separately
+  // asserted, only its failure paths were. This is pre-existing,
+  // unmodified guard code (PEP-1 only wrapped the surrounding catch
+  // block), added here as pure test coverage.
+
+  it('allows the request through and attaches a verified actor when a valid API key (owned by a user) is presented', async () => {
+    const guard = makeGuard({
+      verifyApiKey: () => Promise.resolve({ role: Role.STOREKEEPER, ownerUserId: 'user-42' }),
+    });
+    const context = makeContext({ 'x-api-key': 'valid-key' });
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(context.requestRef.verifiedActor).toEqual({
+      role: Role.STOREKEEPER,
+      userId: 'user-42',
+      authMethod: 'api-key',
+    });
+  });
+
+  it('attaches a verified actor with no userId when a valid API key belongs to a service account (no owning user)', async () => {
+    const guard = makeGuard({
+      verifyApiKey: () => Promise.resolve({ role: Role.SYSTEM_ADMINISTRATOR, ownerUserId: null }),
+    });
+    const context = makeContext({ 'x-api-key': 'service-account-key' });
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(context.requestRef.verifiedActor).toEqual({
+      role: Role.SYSTEM_ADMINISTRATOR,
+      userId: undefined,
+      authMethod: 'api-key',
+    });
+  });
 });
